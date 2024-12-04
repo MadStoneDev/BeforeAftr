@@ -52,7 +52,7 @@ export const FileInput = ({
           ${
             dragActive
               ? "border-blue-500 bg-blue-50"
-              : "border-neutral-300 bg-neutral-50 hover:bg-neutral-100"
+              : "border-neutral-300 bg-neutral-100/95 hover:bg-neutral-50 transition-all duration-200 ease-in-out"
           }
         `}
         onDragEnter={handleDrag}
@@ -69,19 +69,19 @@ export const FileInput = ({
             }`}
           />
           <p
-            className={`block sm:hidden mb-2 text-sm text-neutral-500 text-center`}
+            className={`block sm:hidden mb-2 text-sm text-neutral-600 text-center`}
           >
             <span className={`font-semibold`}>Tap to upload</span>
           </p>
 
           <p
-            className={`hidden sm:block mb-2 text-sm text-neutral-500 text-center`}
+            className={`hidden sm:block mb-2 text-sm text-neutral-600 text-center`}
           >
             <span className={`font-semibold`}>Click to upload a {label}</span>{" "}
             or drag and drop
           </p>
           <p
-            className={`pt-1 border-t border-neutral-400 text-xs italic text-neutral-500`}
+            className={`mt-2 pt-1 border-t border-neutral-400/50 text-xs italic text-neutral-400`}
           >
             Image files only
           </p>

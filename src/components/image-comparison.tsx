@@ -91,7 +91,8 @@ const ImageComparison: React.FC = () => {
     e.stopPropagation();
   };
 
-  const handlePointerDown = (): void => {
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>): void => {
+    e.preventDefault();
     setIsDragging(true);
   };
 
@@ -125,7 +126,7 @@ const ImageComparison: React.FC = () => {
 
       <article
         ref={containerRef}
-        className={`flex-grow relative mx-auto max-w-full max-h-[700px] border bg-gray-100 rounded-lg overflow-hidden select-none`}
+        className={`flex-grow relative mx-auto max-w-full max-h-[700px] border bg-neutral-100/95 rounded-lg overflow-hidden select-none`}
         style={{
           width: containerWidth ? `${containerWidth}px` : "100%",
           height: containerHeight ? `${containerHeight}px` : "100%",
@@ -176,7 +177,7 @@ const ImageComparison: React.FC = () => {
 
         {/* Slider Handle */}
         <div
-          className={`absolute top-0 bottom-0 z-50`}
+          className={`absolute top-0 bottom-0 z-50 touch-none`}
           style={{ left: `${sliderPosition}%` }}
           onPointerDown={handlePointerDown}
         >
