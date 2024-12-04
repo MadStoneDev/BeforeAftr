@@ -91,15 +91,15 @@ const ImageComparison: React.FC = () => {
     e.stopPropagation();
   };
 
-  const handleMouseDown = (): void => {
+  const handlePointerDown = (): void => {
     setIsDragging(true);
   };
 
-  const handleMouseUp = (): void => {
+  const handlePointerUp = (): void => {
     setIsDragging(false);
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>): void => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>): void => {
     if (isDragging && containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
@@ -110,7 +110,7 @@ const ImageComparison: React.FC = () => {
 
   return (
     <section className={`mx-auto flex-grow flex flex-col w-full`}>
-      <article className="mb-4 flex gap-6">
+      <article className="mb-6 flex gap-6">
         <FileInput
           label="Before Image"
           onChange={(file) => handleImageUpload(file, "before")}
@@ -125,14 +125,14 @@ const ImageComparison: React.FC = () => {
 
       <article
         ref={containerRef}
-        className={`relative mx-auto max-w-full min-h-96 h-full max-h-[700px] border bg-gray-100 overflow-hidden select-none`}
+        className={`flex-grow relative mx-auto max-w-full max-h-[700px] border bg-gray-100 rounded-lg overflow-hidden select-none`}
         style={{
           width: containerWidth ? `${containerWidth}px` : "100%",
           height: containerHeight ? `${containerHeight}px` : "100%",
         }}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
         onDragOver={handleDragOver}
         onDrop={(e) => {
           e.preventDefault();
@@ -178,7 +178,7 @@ const ImageComparison: React.FC = () => {
         <div
           className={`absolute top-0 bottom-0 z-50`}
           style={{ left: `${sliderPosition}%` }}
-          onMouseDown={handleMouseDown}
+          onPointerDown={handlePointerDown}
         >
           <div className={`absolute left-0 w-0.5 h-full bg-white`}></div>
 

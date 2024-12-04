@@ -80,7 +80,11 @@ export const FileInput = ({
             <span className={`font-semibold`}>Click to upload a {label}</span>{" "}
             or drag and drop
           </p>
-          <p className={`text-xs text-neutral-500`}>Image files only</p>
+          <p
+            className={`pt-1 border-t border-neutral-400 text-xs italic text-neutral-500`}
+          >
+            Image files only
+          </p>
         </div>
         <input
           type="file"
