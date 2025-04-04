@@ -1,21 +1,12 @@
 import ImageComparison from "@/components/image-comparison";
+import MainNavigation from "@/components/main-navigation";
 
 export default function Home() {
   return (
     <div
       className={`px-3 sm:px-5 flex flex-col justify-start w-full min-h-screen max-h-dvh`}
     >
-      <nav
-        className={`flex items-center justify-center min-h-16 border-b border-neutral-600`}
-      >
-        <a href={`/`}>
-          <img
-            src={`/beforeAftr-logo.svg`}
-            alt={`BeforeAftr Logo`}
-            className={`w-20`}
-          />
-        </a>
-      </nav>
+      <MainNavigation />
 
       <main
         className={`flex-grow py-5 flex flex-col items-center sm:items-start w-full`}
