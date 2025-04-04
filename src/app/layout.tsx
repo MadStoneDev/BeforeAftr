@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import localFont from "next/font/local";
+import { GoogleAnalytics, GoogleTagManager } from "@next/third-parties/google";
+
 import { Outfit } from "next/font/google";
 
 const outfit = Outfit({
@@ -23,11 +24,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <GoogleTagManager gtmId={`G-NSDT7S3H6R`} />
       <body
         className={`${outfit.variable} bg-neutral-900 font-sans antialiased`}
       >
         {children}
       </body>
+      <GoogleAnalytics gaId={`G-NSDT7S3H6R`} />
     </html>
   );
 }
