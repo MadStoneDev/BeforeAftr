@@ -10,10 +10,14 @@
   },
   "dependencies": {
     "@next/third-parties": "^15.2.4",
+    "@supabase/ssr": "^0.6.1",
+    "@supabase/supabase-js": "^2.50.0",
+    "@tabler/icons-react": "^3.34.0",
     "lucide-react": "^0.464.0",
     "next": "^15.2.4",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "react-image-crop": "^11.0.10"
   },
   "devDependencies": {
     "@types/node": "^20",

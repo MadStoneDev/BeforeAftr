@@ -24,7 +24,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <GoogleTagManager gtmId={`G-NSDT7S3H6R`} />
       <body
         className={`${outfit.variable} bg-neutral-900 font-sans antialiased`}
       >
