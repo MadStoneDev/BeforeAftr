@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 type AuthResponse = {
   error: string | null;
   success: boolean;
+  orderId: string;
 };
 
 export const handleBuyerAccess = async (
@@ -25,18 +26,21 @@ export const handleBuyerAccess = async (
       return {
         error: "Could not find order",
         success: false,
+        orderId: "",
       };
     }
 
     return {
       error: null,
       success: true,
+      orderId: data[0].id,
     };
   } catch (error: any) {
     console.error("Unexpected error during authentication:", error);
     return {
       error: `Authentication error: ${error?.message || "Unknown error"}`,
       success: false,
+      orderId: "",
     };
   }
 };

@@ -28,6 +28,11 @@ export default function BuyerAccessForm({
     try {
       const result = await handleBuyerAccess(formData);
       if (result.success) {
+        const buyerData = JSON.stringify({
+          accessCode,
+          orderId: result.orderId,
+        });
+        localStorage.setItem("buyerData", buyerData);
         setIsSuccess(true);
       } else {
         setError(result.error);
