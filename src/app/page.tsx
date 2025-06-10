@@ -1,5 +1,5 @@
-import ImageComparison from "@/components/image-comparison";
 import MainNavigation from "@/components/main-navigation";
+import ImageComparison from "@/components/image-comparison";
 
 export default function Home() {
   return (

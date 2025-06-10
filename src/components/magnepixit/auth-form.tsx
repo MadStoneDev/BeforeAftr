@@ -235,7 +235,7 @@ export default function AuthForm() {
                 inputMode="numeric"
                 autoComplete={index === 0 ? "one-time-code" : "off"}
                 maxLength={6} // Allow paste of full code
-                className={`w-10 h-12 sm:w-12 sm:h-14 bg-white border-[3px] border-transparent rounded-lg focus:bg-[#5B9994] focus:outline-none text-center text-2xl text-neutral-900 focus:text-white font-bold transition-all duration-300 ease-in-out`}
+                className={`w-10 h-12 sm:w-12 sm:h-14 bg-white border-[3px] border-transparent rounded-lg focus:bg-magnepixit-primary focus:outline-none text-center text-2xl text-neutral-900 focus:text-white font-bold transition-all duration-300 ease-in-out`}
                 value={digit}
                 onChange={(e) => handleOtpChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
@@ -247,9 +247,9 @@ export default function AuthForm() {
 
           <div className="text-center mt-4">
             {isVerifying ? (
-              <div className="flex justify-center items-center text-sm text-[#5B9994]">
+              <div className="flex justify-center items-center text-sm text-magnepixit-primary">
                 <svg
-                  className="animate-spin -ml-1 mr-2 h-4 w-4 text-[#5B9994]"
+                  className="animate-spin -ml-1 mr-2 h-4 w-4 text-magnepixit-primary"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -275,7 +275,7 @@ export default function AuthForm() {
                 type="button"
                 disabled={isLoading || countdown > 0}
                 onClick={requestNewCode}
-                className="cursor-pointer text-sm text-[#5B9994] hover:underline focus:outline-none"
+                className="cursor-pointer text-sm text-magnepixit-primary hover:underline focus:outline-none"
               >
                 {countdown > 0
                   ? `Request new code (${countdown}s)`
@@ -292,7 +292,7 @@ export default function AuthForm() {
                 setOtp(["", "", "", "", "", ""]);
                 setError(null);
               }}
-              className="cursor-pointer text-[#5B9994] hover:underline focus:outline-none"
+              className="cursor-pointer text-magnepixit-primary hover:underline focus:outline-none"
               disabled={isVerifying}
             >
               Use a different email
@@ -311,7 +311,7 @@ export default function AuthForm() {
               type="email"
               autoComplete="email"
               required
-              className="appearance-none rounded-lg relative block w-full px-3 py-3 border border-neutral-300 placeholder-neutral-500 text-neutral-900 focus:outline-none focus:ring-[#5B9994] focus:border-[#5B9994] focus:z-10 sm:text-sm"
+              className="appearance-none rounded-lg relative block w-full px-3 py-3 border border-neutral-300 placeholder-neutral-500 text-neutral-900 focus:outline-none focus:ring-magnepixit-primary focus:border-magnepixit-primary focus:z-10 sm:text-sm"
               placeholder="Email address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -323,7 +323,7 @@ export default function AuthForm() {
             <button
               type="submit"
               disabled={isLoading}
-              className={`cursor-pointer w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-[#5B9994] hover:opacity-70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#5B9994] ${
+              className={`cursor-pointer w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-magnepixit-primary hover:opacity-70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-magnepixit-primary ${
                 isLoading ? "opacity-70 cursor-not-allowed" : ""
               } transition-all duration-300 ease-in-out`}
             >
@@ -335,7 +335,7 @@ export default function AuthForm() {
             Looking for Buyer Access instead?{" "}
             <Link
               href={`/magnepixit/buyer-access`}
-              className={`p-0.5 hover:px-1.5 hover:bg-[#5B9994] rounded-full transition-all duration-300 ease-in-out`}
+              className={`p-0.5 hover:px-1.5 hover:bg-magnepixit-primary rounded-full transition-all duration-300 ease-in-out`}
             >
               Click here
             </Link>

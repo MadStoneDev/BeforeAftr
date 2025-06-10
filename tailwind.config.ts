@@ -14,6 +14,12 @@ export default {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        magnepixit: {
+          primary: "#5B9994",
+          secondary: "#F5BE63",
+          tertiary: "#F5A8A9",
+          quaternary: "#99C7E1",
+        },
       },
     },
   },

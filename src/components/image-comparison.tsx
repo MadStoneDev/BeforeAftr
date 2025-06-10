@@ -2,7 +2,7 @@
 
 import React, { DragEvent, useEffect, useRef, useState } from "react";
 
-import { FileInput } from "@/components/file-input";
+import { FileInput } from "@/components/magnepixit/file-input";
 import type { ImageState, ImageType } from "@/types/image-comparison";
 
 const ImageComparison: React.FC = () => {
