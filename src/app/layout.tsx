@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { GoogleAnalytics, GoogleTagManager } from "@next/third-parties/google";
 
 import { Outfit } from "next/font/google";
+import { Toaster } from "react-hot-toast";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -28,6 +29,7 @@ export default function RootLayout({
         className={`${outfit.variable} bg-neutral-900 font-sans antialiased`}
       >
         {children}
+        <Toaster />
       </body>
       <GoogleAnalytics gaId={`G-NSDT7S3H6R`} />
     </html>

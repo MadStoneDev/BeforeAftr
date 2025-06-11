@@ -37,7 +37,7 @@ export default function OrdersList({ initialOrders }: OrdersListProps) {
     setLoading(true);
     try {
       const { data: newOrders, error } = await supabase
-        .from("orders")
+        .from("magnepixit_orders")
         .select("*")
         .order("order_date", { ascending: false })
         .range(orders.length, orders.length + 19);

@@ -71,7 +71,7 @@ export default function ApplyTemplateModal({
       });
 
       const { error } = await supabase
-        .from("templates")
+        .from("magnepixit_templates")
         .insert(templatesToCreate);
 
       if (error) throw error;
@@ -82,7 +82,7 @@ export default function ApplyTemplateModal({
           (p) => p.id === selectedProducts[0],
         );
         const { data: updatedTemplate, error: updateError } = await supabase
-          .from("templates")
+          .from("magnepixit_templates")
           .update({
             product_id: selectedProducts[0],
             product_name: `${template.product_name} - ${firstProduct?.title}`,

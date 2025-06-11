@@ -93,7 +93,7 @@ export default function EditTemplateModal({
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from("templates")
+        .from("magnepixit_templates")
         .update({
           product_name: templateName,
           product_id: selectedProduct,

@@ -40,7 +40,7 @@ export default function RejectModal({
     try {
       // Update order status
       const { error: updateError } = await supabase
-        .from("orders")
+        .from("magnepixit_orders")
         .update({
           status: "RI",
           updated_on: new Date().toISOString(),

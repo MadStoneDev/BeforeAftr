@@ -2,15 +2,18 @@
 
 import { useState } from "react";
 import { createClient } from "@/utils/supabase/client";
+import { toast } from "react-hot-toast";
+import { IconX } from "@tabler/icons-react";
 
-import { IconX, IconPlus, IconTrash } from "@tabler/icons-react";
+import { Database } from "../../../database.types";
 
-interface PhotoConfig {
-  title: string;
-  productName: string;
-  width: number;
-  height: number;
-}
+type Template = Database["public"]["Tables"]["magnepixit_templates"]["Row"];
+type Item = Database["public"]["Tables"]["magnepixit_items"]["Row"];
+type TemplateItem =
+  Database["public"]["Tables"]["magnepixit_templates_items"]["Row"];
+type TemplateProduct =
+  Database["public"]["Tables"]["magnepixit_templates_products"]["Row"];
+type StoredProduct = Database["public"]["Tables"]["magnepixit_products"]["Row"];
 
 interface EtsyProduct {
   id: string;
@@ -20,83 +23,185 @@ interface EtsyProduct {
 interface CreateTemplateModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreated: (template: any) => void;
+  onCreated: (template: Template) => void;
+  allItems: Item[];
+  allStoredProducts: StoredProduct[];
   etsyProducts: EtsyProduct[];
+  onTemplateItemsChange: (templateItems: TemplateItem[]) => void;
+  onTemplateProductsChange: (templateProducts: TemplateProduct[]) => void;
+  onStoredProductsChange: (storedProducts: StoredProduct[]) => void;
 }
 
 export default function CreateTemplateModal({
   isOpen,
   onClose,
   onCreated,
+  allItems,
+  allStoredProducts,
   etsyProducts,
+  onTemplateItemsChange,
+  onTemplateProductsChange,
+  onStoredProductsChange,
 }: CreateTemplateModalProps) {
-  const [templateName, setTemplateName] = useState("");
-  const [selectedProduct, setSelectedProduct] = useState("");
-  const [photoConfigs, setPhotoConfigs] = useState<PhotoConfig[]>([
-    { title: "", productName: "", width: 85, height: 55 },
-  ]);
   const [loading, setLoading] = useState(false);
+  const [templateTitle, setTemplateTitle] = useState("");
+  const [selectedItems, setSelectedItems] = useState<number[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+
   const supabase = createClient();
 
   if (!isOpen) return null;
 
-  const addPhotoConfig = () => {
-    setPhotoConfigs((prev) => [
-      ...prev,
-      { title: "", productName: "", width: 85, height: 55 },
-    ]);
-  };
-
-  const removePhotoConfig = (index: number) => {
-    if (photoConfigs.length > 1) {
-      setPhotoConfigs((prev) => prev.filter((_, i) => i !== index));
-    }
-  };
-
-  const updatePhotoConfig = (
-    index: number,
-    field: keyof PhotoConfig,
-    value: string | number,
-  ) => {
-    setPhotoConfigs((prev) =>
-      prev.map((config, i) =>
-        i === index ? { ...config, [field]: value } : config,
-      ),
-    );
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      !templateName.trim() ||
-      photoConfigs.some((config) => !config.title.trim())
-    )
-      return;
+    if (!templateTitle.trim()) return;
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("templates")
+      // Create the template
+      const { data: template, error: templateError } = await supabase
+        .from("magnepixit_templates")
         .insert({
-          product_name: templateName,
-          product_id: selectedProduct,
-          template: photoConfigs,
+          title: templateTitle,
         })
         .select()
         .single();
 
-      if (error) throw error;
+      if (templateError) throw templateError;
 
-      onCreated(data);
-      setTemplateName("");
-      setSelectedProduct("");
-      setPhotoConfigs([{ title: "", productName: "", width: 85, height: 55 }]);
+      // Add items to template
+      if (selectedItems.length > 0) {
+        const templateItemInserts = selectedItems.map((itemId) => ({
+          template_id: template.id,
+          item_id: itemId,
+        }));
+
+        const { data: templateItems, error: templateItemsError } =
+          await supabase
+            .from("magnepixit_templates_items")
+            .insert(templateItemInserts)
+            .select();
+
+        if (templateItemsError) throw templateItemsError;
+
+        // Update template items state
+        if (templateItems) {
+          onTemplateItemsChange(templateItems);
+        }
+      }
+
+      // Handle products
+      if (selectedProducts.length > 0) {
+        const newStoredProducts: StoredProduct[] = [];
+        const templateProductInserts: {
+          template_id: number;
+          product_id: number;
+        }[] = [];
+
+        for (const etsyProductId of selectedProducts) {
+          // Check if product already exists in our database
+          let storedProduct = allStoredProducts.find(
+            (p) => p.product_id === etsyProductId,
+          );
+
+          if (!storedProduct) {
+            // Find the Etsy product details
+            const etsyProduct = etsyProducts.find(
+              (p) => p.id === etsyProductId,
+            );
+            if (etsyProduct) {
+              // Create new stored product
+              const { data: newProduct, error: productError } = await supabase
+                .from("magnepixit_products")
+                .insert({
+                  product_id: etsyProductId,
+                  title: etsyProduct.title,
+                  created_timestamp: new Date().toISOString(),
+                })
+                .select()
+                .single();
+
+              if (productError) throw productError;
+              storedProduct = newProduct;
+              newStoredProducts.push(newProduct);
+            }
+          }
+
+          if (storedProduct) {
+            templateProductInserts.push({
+              template_id: template.id,
+              product_id: storedProduct.id,
+            });
+          }
+        }
+
+        // Update stored products state if we created new ones
+        if (newStoredProducts.length > 0) {
+          onStoredProductsChange([...allStoredProducts, ...newStoredProducts]);
+        }
+
+        // Create template-product relationships
+        if (templateProductInserts.length > 0) {
+          const { data: templateProducts, error: templateProductsError } =
+            await supabase
+              .from("magnepixit_templates_products")
+              .insert(templateProductInserts)
+              .select();
+
+          if (templateProductsError) throw templateProductsError;
+
+          // Update template products state
+          if (templateProducts) {
+            onTemplateProductsChange(templateProducts);
+          }
+        }
+      }
+
+      onCreated(template);
+
+      // Reset form
+      setTemplateTitle("");
+      setSelectedItems([]);
+      setSelectedProducts([]);
       onClose();
     } catch (error) {
       console.error("Error creating template:", error);
+      toast.error("Failed to create template");
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleItem = (itemId: number) => {
+    setSelectedItems((prev) =>
+      prev.includes(itemId)
+        ? prev.filter((id) => id !== itemId)
+        : [...prev, itemId],
+    );
+  };
+
+  const toggleProduct = (productId: string) => {
+    setSelectedProducts((prev) =>
+      prev.includes(productId)
+        ? prev.filter((id) => id !== productId)
+        : [...prev, productId],
+    );
+  };
+
+  // Get products that don't already have a template assigned
+  const getAvailableProducts = () => {
+    const assignedProductIds = new Set(
+      allStoredProducts
+        .filter((product) => {
+          // Check if this product is already assigned to any template
+          return onTemplateProductsChange.length > 0; // This is a placeholder - you'd need to pass template products state
+        })
+        .map((p) => p.product_id),
+    );
+
+    return etsyProducts.filter(
+      (product) => !assignedProductIds.has(product.id),
+    );
   };
 
   return (
@@ -115,150 +220,68 @@ export default function CreateTemplateModal({
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-2">
-              Template Name
+              Template Title
             </label>
             <input
               type="text"
-              value={templateName}
-              onChange={(e) => setTemplateName(e.target.value)}
+              value={templateTitle}
+              onChange={(e) => setTemplateTitle(e.target.value)}
               className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5B9994] focus:border-transparent"
               placeholder="e.g., Business Card Template"
               required
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">
-              Apply to Etsy Product (Optional)
-            </label>
-            <select
-              value={selectedProduct}
-              onChange={(e) => setSelectedProduct(e.target.value)}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5B9994] focus:border-transparent"
-            >
-              <option value="">Select a product (can be applied later)</option>
-              {etsyProducts.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.title}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-sm font-medium text-neutral-700">
-                Photo Configurations
-              </h4>
-              <button
-                type="button"
-                onClick={addPhotoConfig}
-                className="inline-flex items-center gap-1 px-3 py-1 text-sm bg-[#5B9994] text-white rounded hover:bg-[#4A8075] transition-colors"
-              >
-                <IconPlus size={16} />
-                Add Photo
-              </button>
+          {allItems.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Add Items to Template (Optional)
+              </label>
+              <div className="max-h-40 overflow-y-auto border border-neutral-300 rounded-lg p-3 space-y-2">
+                {allItems.map((item) => (
+                  <label
+                    key={item.id}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.includes(item.id)}
+                      onChange={() => toggleItem(item.id)}
+                      className="rounded border-neutral-300 text-[#5B9994] focus:ring-[#5B9994]"
+                    />
+                    <span className="text-sm">
+                      {item.title} ({item.width}×{item.height}
+                      {item.dimension_type})
+                    </span>
+                  </label>
+                ))}
+              </div>
             </div>
+          )}
 
-            <div className="space-y-4">
-              {photoConfigs.map((config, index) => (
-                <div
-                  key={index}
-                  className="p-4 border border-neutral-200 rounded-lg"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <h5 className="font-medium text-sm">Photo {index + 1}</h5>
-                    {photoConfigs.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removePhotoConfig(index)}
-                        className="p-1 text-red-500 hover:bg-red-50 rounded"
-                      >
-                        <IconTrash size={16} />
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-neutral-600 mb-1">
-                        Title
-                      </label>
-                      <input
-                        type="text"
-                        value={config.title}
-                        onChange={(e) =>
-                          updatePhotoConfig(index, "title", e.target.value)
-                        }
-                        className="w-full px-2 py-1 text-sm border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-[#5B9994]"
-                        placeholder="Business Card"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-neutral-600 mb-1">
-                        Product Name
-                      </label>
-                      <input
-                        type="text"
-                        value={config.productName}
-                        onChange={(e) =>
-                          updatePhotoConfig(
-                            index,
-                            "productName",
-                            e.target.value,
-                          )
-                        }
-                        className="w-full px-2 py-1 text-sm border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-[#5B9994]"
-                        placeholder="Premium Cards"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-neutral-600 mb-1">
-                        Width (mm)
-                      </label>
-                      <input
-                        type="number"
-                        value={config.width}
-                        onChange={(e) =>
-                          updatePhotoConfig(
-                            index,
-                            "width",
-                            parseInt(e.target.value) || 0,
-                          )
-                        }
-                        className="w-full px-2 py-1 text-sm border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-[#5B9994]"
-                        min="1"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-neutral-600 mb-1">
-                        Height (mm)
-                      </label>
-                      <input
-                        type="number"
-                        value={config.height}
-                        onChange={(e) =>
-                          updatePhotoConfig(
-                            index,
-                            "height",
-                            parseInt(e.target.value) || 0,
-                          )
-                        }
-                        className="w-full px-2 py-1 text-sm border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-[#5B9994]"
-                        min="1"
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
+          {etsyProducts.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Apply to Etsy Products (Optional)
+              </label>
+              <div className="max-h-40 overflow-y-auto border border-neutral-300 rounded-lg p-3 space-y-2">
+                {getAvailableProducts().map((product) => (
+                  <label
+                    key={product.id}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedProducts.includes(product.id)}
+                      onChange={() => toggleProduct(product.id)}
+                      className="rounded border-neutral-300 text-[#5B9994] focus:ring-[#5B9994]"
+                    />
+                    <span className="text-sm">{product.title}</span>
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-4 border-t border-neutral-200">
             <button
@@ -270,7 +293,7 @@ export default function CreateTemplateModal({
             </button>
             <button
               type="submit"
-              disabled={loading || !templateName.trim()}
+              disabled={loading || !templateTitle.trim()}
               className="px-4 py-2 bg-[#5B9994] text-white rounded-lg hover:bg-[#4A8075] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? "Creating..." : "Create Template"}

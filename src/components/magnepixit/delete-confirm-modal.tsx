@@ -53,7 +53,7 @@ export default function DeleteConfirmModal({
     setLoading(true);
     try {
       const { error } = await supabase
-        .from("templates")
+        .from("magnepixit_templates")
         .delete()
         .eq("id", template.id);
 

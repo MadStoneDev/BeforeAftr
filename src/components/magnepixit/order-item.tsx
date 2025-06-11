@@ -8,8 +8,6 @@ import {
   IconX,
   IconCheck,
   IconCopy,
-  IconEye,
-  IconEyeOff,
   IconPhotoOff,
   IconPhoto,
 } from "@tabler/icons-react";
@@ -88,7 +86,7 @@ export default function OrderItem({ order, onStatusUpdate }: OrderItemProps) {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from("photos")
+        .from("magnepixit_photos")
         .select("*")
         .eq("order_id", order.order_no)
         .order("created_at", { ascending: true });
@@ -116,7 +114,7 @@ export default function OrderItem({ order, onStatusUpdate }: OrderItemProps) {
       for (const photo of photos) {
         if (photo.cropped_photo) {
           const { data, error } = await supabase.storage
-            .from("photos")
+            .from("magnepixit_photos")
             .download(photo.cropped_photo);
 
           if (error) throw error;
@@ -144,7 +142,7 @@ export default function OrderItem({ order, onStatusUpdate }: OrderItemProps) {
       purgeDate.setDate(purgeDate.getDate() + 30);
 
       const { error } = await supabase
-        .from("orders")
+        .from("magnepixit_orders")
         .update({
           status: "OC",
           purge_on: purgeDate.toISOString(),
@@ -164,7 +162,7 @@ export default function OrderItem({ order, onStatusUpdate }: OrderItemProps) {
 
   const copyAccessCode = () => {
     navigator.clipboard.writeText(order.access_code);
-    toast.success("Access code copied to clipboard");
+    toast.success("Access Code copied to clipboard");
   };
 
   const toggleExpanded = () => {
@@ -178,7 +176,7 @@ export default function OrderItem({ order, onStatusUpdate }: OrderItemProps) {
 
   return (
     <article
-      className={`group bg-neutral-300 transition-all duration-300 ease-in-out`}
+      className={`group bg-neutral-100 hover:bg-neutral-200 transition-all duration-300 ease-in-out`}
     >
       <div className="p-6 transition-all duration-300 ease-in-out">
         <div className="flex items-center justify-between">
@@ -195,7 +193,7 @@ export default function OrderItem({ order, onStatusUpdate }: OrderItemProps) {
               </span>
             </div>
 
-            <div className={`grid gap-3 text-sm text-neutral-600`}>
+            <div className={`grid gap-3 text-sm text-neutral-500`}>
               <p>
                 <span className="font-medium">Customer:</span>{" "}
                 {order.customer_name}
@@ -210,16 +208,18 @@ export default function OrderItem({ order, onStatusUpdate }: OrderItemProps) {
               </p>
             </div>
 
-            <div className="mt-3 flex items-center gap-2">
-              <span className="text-sm font-medium text-neutral-700">
-                Access Code:
-              </span>
-              <code className="px-2 py-1 bg-neutral-100 rounded text-sm font-mono">
+            <div
+              className={`mt-3 px-4 py-2 inline-flex items-center gap-2 rounded-full bg-neutral-300 group-hover:bg-neutral-400/80 shadow-md transition-all duration-300 ease-in-out`}
+            >
+              <span className={`text-sm font-medium`}>Access Code:</span>
+              <code
+                className={`px-2 py-0.5 bg-neutral-100 rounded text-sm font-mono`}
+              >
                 {order.access_code}
               </code>
               <button
                 onClick={copyAccessCode}
-                className="p-1 hover:bg-neutral-200 rounded transition-all duration-300 ease-in-out"
+                className="p-1 hover:bg-neutral-100 rounded  transition-all duration-300 ease-in-out"
                 title="Copy access code"
               >
                 <IconCopy size={16} />
@@ -265,7 +265,7 @@ export default function OrderItem({ order, onStatusUpdate }: OrderItemProps) {
           <div className="flex flex-col items-center gap-2 ml-4">
             <button
               onClick={toggleExpanded}
-              className="p-2 hover:bg-neutral-200 rounded-lg transition-all duration-300 ease-in-out"
+              className="p-2 hover:bg-white rounded-lg transition-all duration-300 ease-in-out"
               title={expanded ? "Hide photos" : "View photos"}
             >
               {expanded ? <IconPhotoOff size={20} /> : <IconPhoto size={20} />}

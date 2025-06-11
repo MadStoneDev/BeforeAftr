@@ -17,7 +17,7 @@ export const handleBuyerAccess = async (
     const supabase = await createClient();
 
     const { data, error } = await supabase
-      .from("orders")
+      .from("magnepixit_orders")
       .select("id")
       .eq("access_code", accessCode);
 

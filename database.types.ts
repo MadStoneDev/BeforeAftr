@@ -9,7 +9,34 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      orders: {
+      magnepixit_items: {
+        Row: {
+          created_at: string
+          dimension_type: string | null
+          height: number | null
+          id: number
+          title: string | null
+          width: number | null
+        }
+        Insert: {
+          created_at?: string
+          dimension_type?: string | null
+          height?: number | null
+          id?: number
+          title?: string | null
+          width?: number | null
+        }
+        Update: {
+          created_at?: string
+          dimension_type?: string | null
+          height?: number | null
+          id?: number
+          title?: string | null
+          width?: number | null
+        }
+        Relationships: []
+      }
+      magnepixit_orders: {
         Row: {
           access_code: string | null
           access_history: Json | null
@@ -51,7 +78,7 @@ export type Database = {
         }
         Relationships: []
       }
-      photos: {
+      magnepixit_photos: {
         Row: {
           created_at: string
           cropped_photo: string | null
@@ -78,12 +105,39 @@ export type Database = {
             foreignKeyName: "photos_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
-            referencedRelation: "orders"
+            referencedRelation: "magnepixit_orders"
             referencedColumns: ["id"]
           },
         ]
       }
-      profiles: {
+      magnepixit_products: {
+        Row: {
+          created_at: string
+          created_timestamp: string | null
+          id: number
+          product_id: string | null
+          title: string | null
+          updated_on: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_timestamp?: string | null
+          id?: number
+          product_id?: string | null
+          title?: string | null
+          updated_on?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_timestamp?: string | null
+          id?: number
+          product_id?: string | null
+          title?: string | null
+          updated_on?: string | null
+        }
+        Relationships: []
+      }
+      magnepixit_profiles: {
         Row: {
           created_at: string
           encrypted_access_token: string | null
@@ -112,6 +166,96 @@ export type Database = {
           token_expires_at?: string | null
         }
         Relationships: []
+      }
+      magnepixit_templates: {
+        Row: {
+          created_at: string
+          id: number
+          title: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          title?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          title?: string | null
+        }
+        Relationships: []
+      }
+      magnepixit_templates_items: {
+        Row: {
+          created_at: string
+          id: number
+          item_id: number | null
+          template_id: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          item_id?: number | null
+          template_id?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          item_id?: number | null
+          template_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "magnepixit_templates_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "magnepixit_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "magnepixit_templates_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "magnepixit_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      magnepixit_templates_products: {
+        Row: {
+          created_at: string
+          id: number
+          product_id: number | null
+          template_id: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          product_id?: number | null
+          template_id?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          product_id?: number | null
+          template_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "magnepixit_templates_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "magnepixit_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "magnepixit_templates_products_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "magnepixit_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

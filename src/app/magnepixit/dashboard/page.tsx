@@ -5,6 +5,9 @@ import { syncEtsyOrders, validateEtsyToken } from "@/lib/etsy-api";
 
 import { dummyOrders } from "@/data/dummy-data";
 import OrdersList from "@/components/magnepixit/orders-list";
+import { IconButterfly, IconDiamond } from "@tabler/icons-react";
+import Link from "next/link";
+import DashboardNavigation from "@/components/magnepixit/dashboard-navigation";
 
 export const metadata = {
   title: "MagnePixIt | Dashboard",
@@ -31,7 +34,7 @@ export default async function MagnePixItDashboardPage() {
   // Check Etsy token validity and sync orders
   try {
     const { data: profile } = await supabase
-      .from("profiles")
+      .from("magnepixit_profiles")
       .select("*")
       .single();
 
@@ -51,7 +54,7 @@ export default async function MagnePixItDashboardPage() {
   // Generate access codes for orders that don't have them
   try {
     const { data: ordersWithoutCodes } = await supabase
-      .from("orders")
+      .from("magnepixit_orders")
       .select("id, order_no")
       .is("access_code", null);
 
@@ -59,7 +62,7 @@ export default async function MagnePixItDashboardPage() {
       for (const order of ordersWithoutCodes) {
         const accessCode = generateAccessCode();
         await supabase
-          .from("orders")
+          .from("magnepixit_orders")
           .update({ access_code: accessCode })
           .eq("id", order.id);
       }
@@ -70,7 +73,7 @@ export default async function MagnePixItDashboardPage() {
 
   // Get initial orders (first 20)
   const { data: initialOrders, error } = await supabase
-    .from("orders")
+    .from("magnepixit_orders")
     .select("*")
     .order("order_date", { ascending: false })
     .limit(20);
@@ -90,21 +93,5 @@ export default async function MagnePixItDashboardPage() {
     );
   }
 
-  return (
-    <main className="flex justify-center min-h-screen w-full text-neutral-900 bg-neutral-100">
-      <div className="p-6 w-full max-w-6xl space-y-6">
-        <div className="bg-white rounded-xl p-6 shadow-sm">
-          <h1 className="text-3xl font-bold text-neutral-900 mb-2">
-            Merchant Dashboard
-          </h1>
-          <p className="text-neutral-600">
-            Manage your customer orders and photo uploads
-          </p>
-        </div>
-
-        <OrdersList initialOrders={dummyOrders || []} />
-        {/*<OrdersList initialOrders={initialOrders || []} />*/}
-      </div>
-    </main>
-  );
+  return <OrdersList initialOrders={dummyOrders || []} />;
 }
