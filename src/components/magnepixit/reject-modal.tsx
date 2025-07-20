@@ -6,12 +6,9 @@ import { createClient } from "@/utils/supabase/client";
 import { IconX } from "@tabler/icons-react";
 import { sendRejectionEmail } from "@/lib/email";
 
-interface Order {
-  id: string;
-  order_no: string;
-  customer_name: string;
-  customer_email: string;
-}
+import { Database } from "../../../database.types";
+
+type Order = Database["public"]["Tables"]["magnepixit_orders"]["Row"];
 
 interface RejectModalProps {
   isOpen: boolean;
@@ -50,12 +47,14 @@ export default function RejectModal({
       if (updateError) throw updateError;
 
       // Send rejection email
-      await sendRejectionEmail({
-        customerEmail: order.customer_email,
-        customerName: order.customer_name,
-        orderNumber: order.order_no,
-        rejectionReason: reason,
-      });
+      if (order.customer_email && order.customer_name && order.order_no) {
+        await sendRejectionEmail({
+          customerEmail: order.customer_email,
+          customerName: order.customer_name,
+          orderNumber: order.order_no,
+          rejectionReason: reason,
+        });
+      }
 
       onReject(reason);
       setReason("");

@@ -110,6 +110,7 @@ export default function TemplatesManagement({
         const newTemplateItems = templateItemsForTemplate.map((ti) => ({
           template_id: data.id,
           item_id: ti.item_id,
+          item_quantity: ti.item_quantity, // Preserve quantities when duplicating
         }));
 
         const { error: relationError } = await supabase
@@ -188,6 +189,14 @@ export default function TemplatesManagement({
     return items.filter((item) => relatedItemIds.includes(item.id));
   };
 
+  const getTemplateItemsForTemplate = (templateId: number) => {
+    return templateItems.filter((ti) => ti.template_id === templateId);
+  };
+
+  const getTemplateItemsForItem = (itemId: number) => {
+    return templateItems.filter((ti) => ti.item_id === itemId);
+  };
+
   const getProductsForTemplate = (templateId: number) => {
     const relatedProductIds = templateProducts
       .filter((tp) => tp.template_id === templateId)
@@ -195,6 +204,10 @@ export default function TemplatesManagement({
     return storedProducts.filter((product) =>
       relatedProductIds.includes(product.id),
     );
+  };
+
+  const getTemplateProductsForTemplate = (templateId: number) => {
+    return templateProducts.filter((tp) => tp.template_id === templateId);
   };
 
   const getTemplatesForItem = (itemId: number) => {
@@ -209,12 +222,12 @@ export default function TemplatesManagement({
   return (
     <div className="space-y-6">
       {/* Tab Navigation */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-white sm:rounded-xl shadow-sm overflow-hidden">
         <div className="border-b border-neutral-200">
           <nav className="flex">
             <button
               onClick={() => setActiveTab("templates")}
-              className={`px-6 py-4 font-medium text-sm border-b-2 transition-colors ${
+              className={`px-3 sm:px-6 py-4 font-medium text-sm border-b-2 transition-all duration-300 ease-in-out ${
                 activeTab === "templates"
                   ? "border-[#5B9994] text-[#5B9994]"
                   : "border-transparent text-neutral-500 hover:text-neutral-700"
@@ -224,7 +237,7 @@ export default function TemplatesManagement({
             </button>
             <button
               onClick={() => setActiveTab("items")}
-              className={`px-6 py-4 font-medium text-sm border-b-2 transition-colors ${
+              className={`px-3 sm:px-6 py-4 font-medium text-sm border-b-2 transition-all duration-300 ease-in-out ${
                 activeTab === "items"
                   ? "border-[#5B9994] text-[#5B9994]"
                   : "border-transparent text-neutral-500 hover:text-neutral-700"
@@ -238,37 +251,37 @@ export default function TemplatesManagement({
         {/* Tab Content */}
         {activeTab === "templates" && (
           <>
-            <div className="p-6 border-b border-neutral-200 flex items-center justify-between">
+            <div className="p-3 sm:p-6 border-b border-neutral-200 flex items-center justify-between">
               <h2 className="text-xl font-semibold text-neutral-900">
                 Templates ({templates.length})
               </h2>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowCreateItemModal(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-all duration-300 ease-in-out"
                 >
                   <IconMoneybagPlus size={20} />
-                  <span>Create Item</span>
+                  <span className="hidden sm:flex">Create Item</span>
                 </button>
                 <button
                   onClick={() => setShowCreateTemplateModal(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#5B9994] text-white rounded-lg hover:bg-[#4A8075] transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#5B9994] text-white rounded-lg hover:bg-[#4A8075] transition-all duration-300 ease-in-out"
                 >
                   <IconCubePlus size={20} />
-                  <span>Create Template</span>
+                  <span className="hidden sm:flex">Create Template</span>
                 </button>
               </div>
             </div>
 
             {templates.length === 0 ? (
-              <div className="p-12 text-center">
+              <div className="p-6 sm:p-12 text-center">
                 <p className="text-neutral-500 mb-4">
                   No templates created yet. Create your first template to get
                   started.
                 </p>
                 <button
                   onClick={() => setShowCreateTemplateModal(true)}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-[#5B9994] text-white rounded-lg hover:bg-[#4A8075] transition-colors"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-[#5B9994] text-white rounded-lg hover:bg-[#4A8075] transition-all duration-300 ease-in-out"
                 >
                   <IconPlus size={20} />
                   Create Your First Template
@@ -282,6 +295,7 @@ export default function TemplatesManagement({
                     template={template}
                     items={getItemsForTemplate(template.id)}
                     products={getProductsForTemplate(template.id)}
+                    templateItems={getTemplateItemsForTemplate(template.id)}
                     allItems={items}
                     allStoredProducts={storedProducts}
                     etsyProducts={etsyProducts}
@@ -300,36 +314,36 @@ export default function TemplatesManagement({
 
         {activeTab === "items" && (
           <>
-            <div className="p-6 border-b border-neutral-200 flex items-center justify-between">
+            <div className="p-3 sm:p-6 border-b border-neutral-200 flex items-center justify-between">
               <h2 className="text-xl font-semibold text-neutral-900">
                 Items ({items.length})
               </h2>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowCreateTemplateModal(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-all duration-300 ease-in-out"
                 >
                   <IconCubePlus size={20} />
-                  <span>Create Template</span>
+                  <span className="hidden sm:flex">Create Template</span>
                 </button>
                 <button
                   onClick={() => setShowCreateItemModal(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#5B9994] text-white rounded-lg hover:bg-[#4A8075] transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#5B9994] text-white rounded-lg hover:bg-[#4A8075] transition-all duration-300 ease-in-out"
                 >
                   <IconMoneybagPlus size={20} />
-                  <span>Create Item</span>
+                  <span className="hidden sm:flex">Create Item</span>
                 </button>
               </div>
             </div>
 
             {items.length === 0 ? (
-              <div className="p-12 text-center">
+              <div className="p-6 sm:p-12 text-center">
                 <p className="text-neutral-500 mb-4">
                   No items created yet. Create your first item to get started.
                 </p>
                 <button
                   onClick={() => setShowCreateItemModal(true)}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-[#5B9994] text-white rounded-lg hover:bg-[#4A8075] transition-colors"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-[#5B9994] text-white rounded-lg hover:bg-[#4A8075] transition-all duration-300 ease-in-out"
                 >
                   <IconPlus size={20} />
                   Create Your First Item
@@ -342,6 +356,7 @@ export default function TemplatesManagement({
                     key={item.id}
                     item={item}
                     templates={getTemplatesForItem(item.id)}
+                    templateItems={getTemplateItemsForItem(item.id)}
                     allTemplates={templates}
                     onUpdate={handleItemUpdated}
                     onDelete={handleItemDeleted}
@@ -362,6 +377,7 @@ export default function TemplatesManagement({
         onCreated={handleTemplateCreated}
         allItems={items}
         allStoredProducts={storedProducts}
+        allTemplateProducts={templateProducts}
         etsyProducts={etsyProducts}
         onTemplateItemsChange={setTemplateItems}
         onTemplateProductsChange={setTemplateProducts}

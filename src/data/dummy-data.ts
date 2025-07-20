@@ -1,5 +1,9 @@
-﻿// Dummy orders array for testing the dashboard
-export const dummyOrders = [
+﻿import { Database } from "../../database.types";
+
+type Order = Database["public"]["Tables"]["magnepixit_orders"]["Row"];
+
+// Dummy orders array for testing the dashboard
+export const dummyOrders: Order[] = [
   {
     id: "550e8400-e29b-41d4-a716-446655440001",
     created_at: "2024-12-15T10:30:00.000Z",
@@ -9,7 +13,7 @@ export const dummyOrders = [
     status: "RC",
     access_code: "KmNpQrSt",
     access_history: null,
-    RCrge_on: null,
+    purge_on: null,
     customer_email: "sarah.johnson@email.com",
     order_date: "2024-12-15T08:15:00.000Z",
   },
@@ -22,7 +26,7 @@ export const dummyOrders = [
     status: "OC",
     access_code: "AbCdEfGh",
     access_history: null,
-    RCrge_on: "2025-01-13T16:30:00.000Z",
+    purge_on: null,
     customer_email: "m.chen@example.com",
     order_date: "2024-12-14T12:00:00.000Z",
   },
@@ -35,7 +39,7 @@ export const dummyOrders = [
     status: "RI",
     access_code: "XyZaBcDe",
     access_history: null,
-    RCrge_on: null,
+    purge_on: null,
     customer_email: "emma.rodriguez@gmail.com",
     order_date: "2024-12-13T07:30:00.000Z",
   },
@@ -48,7 +52,7 @@ export const dummyOrders = [
     status: "PE",
     access_code: "QwErTyUi",
     access_history: null,
-    RCrge_on: null,
+    purge_on: null,
     customer_email: "d.thompson@company.co.uk",
     order_date: "2024-12-12T13:45:00.000Z",
   },
@@ -61,7 +65,7 @@ export const dummyOrders = [
     status: "RC",
     access_code: "MnOpQrSt",
     access_history: null,
-    RCrge_on: null,
+    purge_on: null,
     customer_email: "lisa.park@outlook.com",
     order_date: "2024-12-11T15:30:00.000Z",
   },
@@ -74,11 +78,8 @@ export const dummyOrders = [
     status: "OC",
     access_code: "FgHiJkLm",
     access_history: null,
-    RCrge_on: "2025-01-09T13:15:00.000Z",
+    purge_on: null,
     customer_email: "james.wilson@yahoo.com",
     order_date: "2024-12-10T10:00:00.000Z",
   },
 ];
-
-// You can use this array by passing it as initialOrders prop:
-// <OrdersList initialOrders={dummyOrders} />

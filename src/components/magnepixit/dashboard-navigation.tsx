@@ -1,13 +1,13 @@
 ﻿import Link from "next/link";
-import { IconButterfly, IconDashboard } from "@tabler/icons-react";
+import { IconButterfly, IconCube, IconDashboard } from "@tabler/icons-react";
 
 export default function DashboardNavigation() {
   return (
-    <section className={`flex items-center bg-white rounded-xl p-6`}>
+    <section
+      className={`p-3 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-white sm:rounded-xl`}
+    >
       <article className={`flex-grow`}>
         <h1 className="text-3xl font-bold text-neutral-900 mb-2">
-          MagnePix It
-          <br />
           Merchant Dashboard
         </h1>
         <p className="text-neutral-600">
@@ -15,7 +15,9 @@ export default function DashboardNavigation() {
         </p>
       </article>
 
-      <article className={`flex items-center gap-4`}>
+      <article
+        className={`flex justify-center sm:justify-end items-center gap-4 w-full`}
+      >
         <Link
           title={`Dashboard`}
           href={`/magnepixit/dashboard`}
@@ -29,7 +31,7 @@ export default function DashboardNavigation() {
           href={`/magnepixit/dashboard/templates`}
           className={`p-3 flex flex-col items-center hover:bg-magnepixit-primary rounded-xl hover:text-white transition-all duration-300 ease-in-out`}
         >
-          <IconButterfly size={30} />
+          <IconCube size={28} />
         </Link>
       </article>
     </section>

@@ -11,6 +11,7 @@ import {
   IconChevronUp,
 } from "@tabler/icons-react";
 
+import EditItemModal from "@/components/magnepixit/edit-item-modal";
 import { Database } from "../../../database.types";
 
 type Item = Database["public"]["Tables"]["magnepixit_items"]["Row"];
@@ -21,6 +22,7 @@ type TemplateItem =
 interface SingleItemProps {
   item: Item;
   templates: Template[];
+  templateItems: TemplateItem[];
   allTemplates: Template[];
   onUpdate: (item: Item) => void;
   onDelete: (itemId: number) => void;
@@ -31,6 +33,7 @@ interface SingleItemProps {
 export default function SingleItem({
   item,
   templates,
+  templateItems,
   allTemplates,
   onUpdate,
   onDelete,
@@ -39,6 +42,7 @@ export default function SingleItem({
 }: SingleItemProps) {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const supabase = createClient();
 
@@ -79,11 +83,11 @@ export default function SingleItem({
   };
 
   return (
-    <div className="group hover:bg-neutral-50 transition-colors">
+    <div className="group hover:bg-neutral-100 transition-colors">
       <div className="p-6">
         <div className="flex items-center justify-between">
           <div className="flex-grow">
-            <div className="flex items-center gap-4 mb-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-4 mb-2">
               <h3 className="font-semibold text-lg">{item.title}</h3>
               <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
                 {item.width}×{item.height}
@@ -101,17 +105,14 @@ export default function SingleItem({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 ml-4">
+          <div className="flex flex-col sm:flex-row items-center gap-2 ml-4">
             <button
-              onClick={() => setExpanded(!expanded)}
-              className="p-2 hover:bg-neutral-200 rounded-lg transition-colors"
-              title={expanded ? "Hide details" : "Show details"}
+              onClick={() => setShowEditModal(true)}
+              className="p-2 hover:bg-blue-500 hover:text-white rounded-lg transition-colors"
+              title="Edit item"
+              disabled={loading}
             >
-              {expanded ? (
-                <IconChevronUp size={20} />
-              ) : (
-                <IconChevronDown size={20} />
-              )}
+              <IconEdit size={20} />
             </button>
 
             <button
@@ -130,6 +131,18 @@ export default function SingleItem({
               disabled={loading}
             >
               <IconTrash size={20} />
+            </button>
+
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="p-2 hover:bg-neutral-200 rounded-lg transition-colors"
+              title={expanded ? "Hide details" : "Show details"}
+            >
+              {expanded ? (
+                <IconChevronUp size={20} />
+              ) : (
+                <IconChevronDown size={20} />
+              )}
             </button>
           </div>
         </div>
@@ -158,18 +171,32 @@ export default function SingleItem({
                   Used in templates:
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {templates.map((template) => (
-                    <div
-                      key={template.id}
-                      className="p-3 bg-green-50 rounded-lg"
-                    >
-                      <p className="font-medium text-sm">{template.title}</p>
-                      <p className="text-xs text-neutral-600">
-                        Created:{" "}
-                        {new Date(template.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                  ))}
+                  {templates.map((template) => {
+                    const templateItem = templateItems.find(
+                      (ti) =>
+                        ti.template_id === template.id &&
+                        ti.item_id === item.id,
+                    );
+                    const quantity = templateItem?.item_quantity || 1;
+
+                    return (
+                      <div
+                        key={template.id}
+                        className="p-3 bg-green-50 rounded-lg"
+                      >
+                        <p className="font-medium text-sm">{template.title}</p>
+                        <p className="text-xs text-neutral-600">
+                          Created:{" "}
+                          {new Date(template.created_at).toLocaleDateString()}
+                          {quantity > 1 && (
+                            <span className="ml-2 px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-xs font-medium">
+                              Qty: {quantity}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -182,6 +209,16 @@ export default function SingleItem({
           </div>
         )}
       </div>
+
+      <EditItemModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        item={item}
+        allTemplates={allTemplates}
+        templateItems={templateItems}
+        onUpdated={onUpdate}
+        onTemplateItemsChange={onTemplateItemsChange}
+      />
     </div>
   );
 }

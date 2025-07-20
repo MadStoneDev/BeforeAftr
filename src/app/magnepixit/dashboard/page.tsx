@@ -1,33 +1,14 @@
 ﻿import { createClient } from "@/utils/supabase/server";
-
 import { generateAccessCode } from "@/lib/utils";
 import { syncEtsyOrders, validateEtsyToken } from "@/lib/etsy-api";
 
-import { dummyOrders } from "@/data/dummy-data";
 import OrdersList from "@/components/magnepixit/orders-list";
-import { IconButterfly, IconDiamond } from "@tabler/icons-react";
-import Link from "next/link";
-import DashboardNavigation from "@/components/magnepixit/dashboard-navigation";
+import { dummyOrders } from "@/data/dummy-data";
 
 export const metadata = {
   title: "MagnePixIt | Dashboard",
   description: "Merchant dashboard for managing orders and photos.",
 };
-
-interface Order {
-  id: string;
-  created_at: string;
-  updated_on: string;
-  order_no: string;
-  customer_name: string;
-  status: string;
-  access_code: string;
-  access_history: string | null;
-  purge_on: string | null;
-  customer_email: string;
-  order_date: string;
-}
-
 export default async function MagnePixItDashboardPage() {
   const supabase = await createClient();
 
@@ -81,17 +62,32 @@ export default async function MagnePixItDashboardPage() {
   if (error) {
     console.error("Error fetching orders:", error);
     return (
-      <main className="flex justify-center min-h-screen w-full text-neutral-900 bg-neutral-100">
-        <div className="p-6 w-full max-w-6xl">
-          <div className="bg-red-50 border-l-4 border-red-400 p-4">
-            <p className="text-red-700">
-              Error loading dashboard. Please try again.
-            </p>
+      <div className="p-6 w-full max-w-6xl">
+        <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg">
+          <div className="flex">
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">
+                Error loading dashboard
+              </h3>
+              <p className="mt-2 text-sm text-red-700">
+                There was a problem loading your orders. Please try refreshing
+                the page or contact support if the issue persists.
+              </p>
+            </div>
           </div>
         </div>
-      </main>
+      </div>
     );
   }
 
-  return <OrdersList initialOrders={dummyOrders || []} />;
+  return (
+    <main
+      className={`flex justify-center min-h-screen w-full text-neutral-900 bg-neutral-100 sm:rounded-xl overflow-hidden`}
+    >
+      <div className={`w-full max-w-6xl`}>
+        <OrdersList initialOrders={dummyOrders || []} />
+        {/*<OrdersList initialOrders={initialOrders || []} />*/}
+      </div>
+    </main>
+  );
 }

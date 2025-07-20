@@ -26,6 +26,7 @@ interface CreateTemplateModalProps {
   onCreated: (template: Template) => void;
   allItems: Item[];
   allStoredProducts: StoredProduct[];
+  allTemplateProducts: TemplateProduct[];
   etsyProducts: EtsyProduct[];
   onTemplateItemsChange: (templateItems: TemplateItem[]) => void;
   onTemplateProductsChange: (templateProducts: TemplateProduct[]) => void;
@@ -38,6 +39,7 @@ export default function CreateTemplateModal({
   onCreated,
   allItems,
   allStoredProducts,
+  allTemplateProducts,
   etsyProducts,
   onTemplateItemsChange,
   onTemplateProductsChange,
@@ -45,7 +47,9 @@ export default function CreateTemplateModal({
 }: CreateTemplateModalProps) {
   const [loading, setLoading] = useState(false);
   const [templateTitle, setTemplateTitle] = useState("");
-  const [selectedItems, setSelectedItems] = useState<number[]>([]);
+  const [selectedItems, setSelectedItems] = useState<
+    { itemId: number; quantity: number }[]
+  >([]);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
 
   const supabase = createClient();
@@ -71,9 +75,10 @@ export default function CreateTemplateModal({
 
       // Add items to template
       if (selectedItems.length > 0) {
-        const templateItemInserts = selectedItems.map((itemId) => ({
+        const templateItemInserts = selectedItems.map((selectedItem) => ({
           template_id: template.id,
-          item_id: itemId,
+          item_id: selectedItem.itemId,
+          item_quantity: selectedItem.quantity,
         }));
 
         const { data: templateItems, error: templateItemsError } =
@@ -173,11 +178,31 @@ export default function CreateTemplateModal({
   };
 
   const toggleItem = (itemId: number) => {
+    setSelectedItems((prev) => {
+      const existingIndex = prev.findIndex((item) => item.itemId === itemId);
+      if (existingIndex >= 0) {
+        // Remove the item
+        return prev.filter((item) => item.itemId !== itemId);
+      } else {
+        // Add the item with default quantity of 1
+        return [...prev, { itemId, quantity: 1 }];
+      }
+    });
+  };
+
+  const updateItemQuantity = (itemId: number, quantity: number) => {
+    if (quantity <= 0) return; // Ensure quantity is greater than 0
+
     setSelectedItems((prev) =>
-      prev.includes(itemId)
-        ? prev.filter((id) => id !== itemId)
-        : [...prev, itemId],
+      prev.map((item) =>
+        item.itemId === itemId ? { ...item, quantity } : item,
+      ),
     );
+  };
+
+  const getItemQuantity = (itemId: number) => {
+    const item = selectedItems.find((item) => item.itemId === itemId);
+    return item?.quantity || 1;
   };
 
   const toggleProduct = (productId: string) => {
@@ -188,13 +213,22 @@ export default function CreateTemplateModal({
     );
   };
 
+  // Check if an item is selected
+  const isItemSelected = (itemId: number) => {
+    return selectedItems.some((item) => item.itemId === itemId);
+  };
+
   // Get products that don't already have a template assigned
   const getAvailableProducts = () => {
     const assignedProductIds = new Set(
       allStoredProducts
         .filter((product) => {
           // Check if this product is already assigned to any template
-          return onTemplateProductsChange.length > 0; // This is a placeholder - you'd need to pass template products state
+          return allTemplateProducts.some(
+            (tp) =>
+              allStoredProducts.find((sp) => sp.id === tp.product_id)
+                ?.product_id === product.product_id,
+          );
         })
         .map((p) => p.product_id),
     );
@@ -205,7 +239,12 @@ export default function CreateTemplateModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      style={{
+        margin: 0,
+      }}
+    >
       <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-neutral-200 flex items-center justify-between">
           <h3 className="text-lg font-semibold">Create New Template</h3>
@@ -239,21 +278,38 @@ export default function CreateTemplateModal({
               </label>
               <div className="max-h-40 overflow-y-auto border border-neutral-300 rounded-lg p-3 space-y-2">
                 {allItems.map((item) => (
-                  <label
-                    key={item.id}
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedItems.includes(item.id)}
-                      onChange={() => toggleItem(item.id)}
-                      className="rounded border-neutral-300 text-[#5B9994] focus:ring-[#5B9994]"
-                    />
-                    <span className="text-sm">
-                      {item.title} ({item.width}×{item.height}
-                      {item.dimension_type})
-                    </span>
-                  </label>
+                  <div key={item.id} className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 cursor-pointer flex-1">
+                      <input
+                        type="checkbox"
+                        checked={isItemSelected(item.id)}
+                        onChange={() => toggleItem(item.id)}
+                        className="rounded border-neutral-300 text-[#5B9994] focus:ring-[#5B9994]"
+                      />
+                      <span className="text-sm">
+                        {item.title} ({item.width}×{item.height}
+                        {item.dimension_type})
+                      </span>
+                    </label>
+
+                    {isItemSelected(item.id) && (
+                      <div className="flex items-center gap-1">
+                        <label className="text-xs text-neutral-600">Qty:</label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={getItemQuantity(item.id)}
+                          onChange={(e) => {
+                            const qty = parseInt(e.target.value);
+                            if (qty > 0) {
+                              updateItemQuantity(item.id, qty);
+                            }
+                          }}
+                          className="w-16 px-2 py-1 text-xs border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-[#5B9994] focus:border-transparent"
+                        />
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
