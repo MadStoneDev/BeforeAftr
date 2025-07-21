@@ -134,7 +134,7 @@ export async function verifyOtp(formData: FormData): Promise<AuthResponse> {
       };
     }
 
-    revalidatePath("/");
+    revalidatePath("/magnepixit/dashboard");
 
     // Redirect to user profile after successful verification
     return {
