@@ -44,6 +44,13 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/magnepixit";
     return NextResponse.redirect(url);
+  } else if (
+    user &&
+    (request.nextUrl.pathname === "/magnepixit" ||
+      request.nextUrl.pathname === "/magnepixit/buyer-access")
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/magnepixit/dashboard";
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.
