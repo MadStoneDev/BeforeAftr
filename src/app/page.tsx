@@ -17,7 +17,7 @@ export default function Home() {
         className={`py-3 flex flex-col sm:flex-row gap-2 sm:gap-6 items-center justify-start sm:justify-between border-t border-neutral-600 text-xs text-neutral-500`}
       >
         <p>
-          Copyright © 2024{" "}
+          Copyright © {new Date().getFullYear()}{" "}
           <a href={`/`} className={`text-neutral-300`}>
             BeforeAftr
           </a>
