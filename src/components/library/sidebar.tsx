@@ -6,6 +6,9 @@ import {
   ChevronsRight,
   FolderOpen,
   Library,
+  RefreshCw,
+  Search,
+  X,
 } from "lucide-react";
 import type { LibraryNode } from "@/lib/library/types";
 import { Tree } from "./tree";
@@ -21,6 +24,13 @@ type Props = {
   onToggleExpand: (path: string) => void;
   onSelect: (node: LibraryNode) => void;
   onChangeFolder: () => void;
+  onRefresh?: () => void;
+  refreshing?: boolean;
+  searchQuery: string;
+  onSearchChange: (q: string) => void;
+  searchVisibleSet: ReadonlySet<string> | null;
+  searchActive: boolean;
+  searchHasResults: boolean;
 };
 
 const EASE = "cubic-bezier(0.16,1,0.3,1)";
@@ -36,6 +46,13 @@ export function Sidebar({
   onToggleExpand,
   onSelect,
   onChangeFolder,
+  onRefresh,
+  refreshing = false,
+  searchQuery,
+  onSearchChange,
+  searchVisibleSet,
+  searchActive,
+  searchHasResults,
 }: Props) {
   const [peek, setPeek] = useState(false);
   const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -134,6 +151,22 @@ export function Sidebar({
           >
             {tree.name || "Library"}
           </span>
+          {onRefresh && (
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={refreshing}
+              aria-label="Refresh library"
+              title="Re-scan the folder for changes"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 transition-colors duration-[120ms] hover:bg-white/[0.06] hover:text-neutral-200 disabled:pointer-events-none disabled:opacity-60"
+            >
+              <RefreshCw
+                size={14}
+                strokeWidth={1.8}
+                className={refreshing ? "animate-spin" : undefined}
+              />
+            </button>
+          )}
           <button
             type="button"
             onClick={onChangeFolder}
@@ -152,22 +185,66 @@ export function Sidebar({
           </button>
         </div>
 
+        {/* Search */}
+        <div className="px-3 pt-3 pb-1">
+          <div className="relative">
+            <Search
+              size={13}
+              strokeWidth={1.8}
+              aria-hidden
+              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500"
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape" && searchQuery) {
+                  e.stopPropagation();
+                  onSearchChange("");
+                }
+              }}
+              placeholder="Search files & tags"
+              aria-label="Search files and tags"
+              className="h-8 w-full rounded-md border border-white/[0.06] bg-white/[0.03] pl-7 pr-7 text-[12px] text-neutral-200 placeholder:text-neutral-500 transition-colors duration-[120ms] focus:border-white/15 focus:bg-white/[0.05] focus:outline-none"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => onSearchChange("")}
+                aria-label="Clear search"
+                className="absolute right-1.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-neutral-500 transition-colors duration-[120ms] hover:bg-white/[0.06] hover:text-neutral-200"
+              >
+                <X size={11} strokeWidth={2} />
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Section label */}
-        <div className="px-3 pt-4 pb-1">
+        <div className="px-3 pt-3 pb-1">
           <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-500">
-            Folders
+            {searchActive ? "Results" : "Folders"}
           </span>
         </div>
 
         {/* Tree */}
         <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-          <Tree
-            root={tree}
-            selectedPath={selectedPath}
-            expandedPaths={expandedPaths}
-            onToggleExpand={onToggleExpand}
-            onSelect={onSelect}
-          />
+          {searchActive && !searchHasResults ? (
+            <div className="px-3 py-6 text-xs text-neutral-500">
+              No matches for &ldquo;{searchQuery.trim()}&rdquo;.
+            </div>
+          ) : (
+            <Tree
+              root={tree}
+              selectedPath={selectedPath}
+              expandedPaths={expandedPaths}
+              onToggleExpand={onToggleExpand}
+              onSelect={onSelect}
+              visibleSet={searchVisibleSet}
+              forceExpand={searchActive}
+            />
+          )}
         </div>
       </div>
     </aside>

@@ -2,6 +2,7 @@
 
 import { Compass } from "lucide-react";
 import type { LibraryNode } from "@/lib/library/types";
+import type { SortMode, ViewMode, ViewScope } from "@/lib/library/db";
 import { Gallery } from "../gallery/gallery";
 import { DocViewer } from "./doc-viewer";
 import { ImageViewer } from "./image-viewer";
@@ -16,8 +17,15 @@ type Props = {
   activeTagsLower: ReadonlySet<string>;
   onToggleTag: (tag: string) => void;
   onClearTags: () => void;
-  galleryRecursive: boolean;
-  onToggleGalleryRecursive: (v: boolean) => void;
+  viewMode: ViewMode;
+  onViewModeChange: (v: ViewMode) => void;
+  viewScope: ViewScope;
+  onViewScopeChange: (v: ViewScope) => void;
+  sortMode: SortMode;
+  onSortModeChange: (v: SortMode) => void;
+  favoritePaths: ReadonlySet<string>;
+  onToggleFavorite: (path: string) => void;
+  onContextMenu?: (e: React.MouseEvent, node: LibraryNode) => void;
 };
 
 export function Viewer({
@@ -26,8 +34,15 @@ export function Viewer({
   activeTagsLower,
   onToggleTag,
   onClearTags,
-  galleryRecursive,
-  onToggleGalleryRecursive,
+  viewMode,
+  onViewModeChange,
+  viewScope,
+  onViewScopeChange,
+  sortMode,
+  onSortModeChange,
+  favoritePaths,
+  onToggleFavorite,
+  onContextMenu,
 }: Props) {
   if (!node) {
     return (
@@ -52,8 +67,15 @@ export function Viewer({
         activeTagsLower={activeTagsLower}
         onToggleTag={onToggleTag}
         onClearTags={onClearTags}
-        recursive={galleryRecursive}
-        onToggleRecursive={onToggleGalleryRecursive}
+        viewMode={viewMode}
+        onViewModeChange={onViewModeChange}
+        viewScope={viewScope}
+        onViewScopeChange={onViewScopeChange}
+        sortMode={sortMode}
+        onSortModeChange={onSortModeChange}
+        favoritePaths={favoritePaths}
+        onToggleFavorite={onToggleFavorite}
+        onContextMenu={onContextMenu}
       />
     );
   }

@@ -67,7 +67,11 @@ export function useObjectUrl(node: LibraryNode | null): ObjectUrlState {
   return state;
 }
 
-export function useFileText(node: LibraryNode | null): TextState {
+export function useFileText(
+  node: LibraryNode | null,
+  options?: { maxBytes?: number },
+): TextState {
+  const maxBytes = options?.maxBytes;
   const [state, setState] = useState<TextState>({
     text: null,
     error: null,
@@ -91,6 +95,14 @@ export function useFileText(node: LibraryNode | null): TextState {
           setState({ text: null, error: "File not found", loading: false });
           return;
         }
+        if (maxBytes !== undefined && file.size > maxBytes) {
+          setState({
+            text: null,
+            error: `File is too large to preview (${formatBytes(file.size)} — limit ${formatBytes(maxBytes)}).`,
+            loading: false,
+          });
+          return;
+        }
         const text = await file.text();
         if (cancelled) return;
         setState({ text, error: null, loading: false });
@@ -107,9 +119,16 @@ export function useFileText(node: LibraryNode | null): TextState {
     return () => {
       cancelled = true;
     };
-  }, [node]);
+  }, [node, maxBytes]);
 
   return state;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
 export function useFileBuffer(node: LibraryNode | null): BufferState {

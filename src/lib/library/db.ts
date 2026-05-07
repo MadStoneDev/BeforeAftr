@@ -9,18 +9,36 @@ export type LibraryRecord = {
   lastOpenedAt: number;
 };
 
+export type ViewMode = "gallery" | "explorer";
+export type ViewScope = "directory" | "recursive";
+
+export type SortMode = "name-asc" | "name-desc" | "date" | "dimensions" | "color";
+
 export type PreferencesRecord = {
   id: "main";
   sidebarState: "expanded" | "collapsed" | "hidden";
   activeTags: string[];
   expandedPaths: string[];
   selectedPath: string | null;
-  galleryRecursive: boolean;
+  viewMode: ViewMode;
+  viewScope: ViewScope;
+  sortMode: SortMode;
+  topicId: string | null;
+};
+
+export type ThumbnailRecord = {
+  id: string;
+  blob: Blob;
+  createdAt: number;
+  colorTags?: string[];
+  width?: number;
+  height?: number;
 };
 
 export class LibraryDB extends Dexie {
   libraries!: EntityTable<LibraryRecord, "id">;
   preferences!: EntityTable<PreferencesRecord, "id">;
+  thumbnails!: EntityTable<ThumbnailRecord, "id">;
 
   constructor() {
     super("BeforeAftrLibrary");
@@ -28,6 +46,34 @@ export class LibraryDB extends Dexie {
       libraries: "id, lastOpenedAt",
       preferences: "id",
     });
+    this.version(2).stores({
+      libraries: "id, lastOpenedAt",
+      preferences: "id",
+      thumbnails: "id, createdAt",
+    });
+    this.version(3)
+      .stores({
+        libraries: "id, lastOpenedAt",
+        preferences: "id",
+        thumbnails: "id, createdAt",
+        favorites: "path, addedAt",
+        recentlyViewed: "path, viewedAt",
+        collections: "id, createdAt",
+        collectionItems: "[collectionId+path], collectionId, path, addedAt",
+        aiCredits: "id",
+        aiTags: "id",
+      })
+      .upgrade((tx) => {
+        return tx
+          .table("preferences")
+          .toCollection()
+          .modify((rec: Record<string, unknown>) => {
+            const wasRecursive = rec.galleryRecursive === true;
+            rec.viewMode = "gallery";
+            rec.viewScope = wasRecursive ? "recursive" : "directory";
+            delete rec.galleryRecursive;
+          });
+      });
   }
 }
 

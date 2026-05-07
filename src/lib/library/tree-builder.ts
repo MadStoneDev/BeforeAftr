@@ -1,9 +1,10 @@
-import { deriveTagsFromPath } from "./tagging";
+import { deriveTagsFromFilename, deriveTagsFromPath, mergeTagList } from "./tagging";
 import type { LibraryEntry, LibraryNode } from "./types";
 
 export function buildTree(
   rootName: string,
   entries: LibraryEntry[],
+  topicId?: string | null,
 ): LibraryNode {
   const root: LibraryNode = {
     path: "",
@@ -60,13 +61,15 @@ export function buildTree(
       parent.children!.push(node);
       byPath.set(entry.path, node);
     } else {
+      const pathTags = deriveTagsFromPath(entry.path);
+      const fileTags = deriveTagsFromFilename(entry.name, topicId);
       const node: LibraryNode = {
         path: entry.path,
         name: entry.name,
         kind: "file",
         fileKind: entry.fileKind,
         entry,
-        tags: deriveTagsFromPath(entry.path),
+        tags: mergeTagList([pathTags, fileTags]),
       };
       parent.children!.push(node);
     }

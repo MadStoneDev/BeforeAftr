@@ -18,6 +18,9 @@ type Props = {
   selectedPath: string | null;
   onToggle: (path: string) => void;
   onSelect: (node: LibraryNode) => void;
+  onAfterSelect?: () => void;
+  visibleSet?: ReadonlySet<string> | null;
+  forceExpand?: boolean;
 };
 
 function iconForFile(kind: FileKind | undefined) {
@@ -43,19 +46,30 @@ export function TreeNode({
   selectedPath,
   onToggle,
   onSelect,
+  onAfterSelect,
+  visibleSet = null,
+  forceExpand = false,
 }: Props) {
   const isDir = node.kind === "directory";
-  const isExpanded = expanded.has(node.path);
+  const isExpanded = forceExpand || expanded.has(node.path);
   const isSelected = selectedPath === node.path;
-  const hasChildren = isDir && (node.children?.length ?? 0) > 0;
+  const visibleChildren =
+    isDir && node.children
+      ? visibleSet
+        ? node.children.filter((c) => visibleSet.has(c.path))
+        : node.children
+      : [];
+  const hasChildren = visibleChildren.length > 0;
 
   const FileIconComp = iconForFile(node.fileKind);
   const rowRef = useRef<HTMLDivElement>(null);
+  const wasSelected = useRef(isSelected);
 
   useEffect(() => {
-    if (isSelected && rowRef.current) {
+    if (isSelected && !wasSelected.current && rowRef.current) {
       rowRef.current.scrollIntoView({ block: "nearest", behavior: "auto" });
     }
+    wasSelected.current = isSelected;
   }, [isSelected]);
 
   const handleClick = () => {
@@ -65,6 +79,7 @@ export function TreeNode({
     } else {
       onSelect(node);
     }
+    onAfterSelect?.();
   };
 
   return (
@@ -152,17 +167,22 @@ export function TreeNode({
         </span>
       </div>
 
-      {isDir && isExpanded && node.children?.map((child) => (
-        <TreeNode
-          key={child.path}
-          node={child}
-          depth={depth + 1}
-          expanded={expanded}
-          selectedPath={selectedPath}
-          onToggle={onToggle}
-          onSelect={onSelect}
-        />
-      ))}
+      {isDir &&
+        isExpanded &&
+        visibleChildren.map((child) => (
+          <TreeNode
+            key={child.path}
+            node={child}
+            depth={depth + 1}
+            expanded={expanded}
+            selectedPath={selectedPath}
+            onToggle={onToggle}
+            onSelect={onSelect}
+            onAfterSelect={onAfterSelect}
+            visibleSet={visibleSet}
+            forceExpand={forceExpand}
+          />
+        ))}
     </>
   );
 }

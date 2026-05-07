@@ -1,6 +1,14 @@
+import { getTopicById, matchTopicKeywords } from "./topics";
+
 const LEADING_COUNT = /^(\d+[+]?[\s._-]*)(.+)$/;
 const HAS_LETTERS = /[a-zA-Z]/;
 const PURE_NUMERIC = /^\d+$/;
+const DIMENSION_RE = /^\d{2,5}x\d{2,5}$/i;
+const NOISE = new Set([
+  "grid", "nogrid", "no-grid", "gridless", "gridded",
+  "v1", "v2", "v3", "v4", "final", "draft", "copy", "backup",
+  "hd", "hq", "lq", "web", "print", "original", "edit", "edited",
+]);
 
 export function deriveTagFromFolderName(rawName: string): string | null {
   const name = rawName.trim();
@@ -52,6 +60,39 @@ export function mergeTagList(lists: readonly (readonly string[])[]): string[] {
   );
 }
 
+export function deriveTagsFromFilename(
+  name: string,
+  topicId?: string | null,
+): string[] {
+  const base = name.replace(/\.[^.]+$/, "");
+  const tokens = base
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .split(/[\s_\-.,;:!?()[\]{}]+/)
+    .filter(Boolean);
+
+  const meaningful: string[] = [];
+  for (const raw of tokens) {
+    const t = raw.toLowerCase();
+    if (PURE_NUMERIC.test(t)) continue;
+    if (DIMENSION_RE.test(t)) continue;
+    if (NOISE.has(t)) continue;
+    if (t.length < 2) continue;
+    meaningful.push(t);
+  }
+
+  const tags: string[] = [];
+
+  if (topicId) {
+    const topic = getTopicById(topicId);
+    if (topic) {
+      const matched = matchTopicKeywords(meaningful, topic);
+      tags.push(...matched);
+    }
+  }
+
+  return tags;
+}
+
 function singularize(word: string): string {
   if (word.length <= 2) return word;
   const lower = word.toLowerCase();
@@ -69,6 +110,14 @@ function singularize(word: string): string {
   // -oes → strip "es" (heroes → hero, but NOT shoes → sho; allow false positives for now)
   if (lower.endsWith("oes")) {
     return word.slice(0, -2);
+  }
+
+  // -lves → -lf (wolves → wolf, shelves → shelf, elves → elf, selves → self).
+  // Other -ves shapes (-ives / -aves / -ieves) are left alone — they fall
+  // through to the -s rule, which is wrong for knife/leaf/thief but right for
+  // olives/graves/sleeves; folder names skew toward the latter.
+  if (lower.endsWith("lves")) {
+    return word.slice(0, -3) + (isUpper(word, word.length - 3) ? "F" : "f");
   }
 
   // -s (but not -ss, -us, -is, -os — those are typically not plurals)

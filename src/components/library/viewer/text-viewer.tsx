@@ -4,8 +4,12 @@ import type { LibraryNode } from "@/lib/library/types";
 import { useFileText } from "@/lib/library/use-file";
 import { ViewerError, ViewerSkeleton } from "./viewer-skeleton";
 
+const TEXT_PREVIEW_MAX_BYTES = 5 * 1024 * 1024;
+
 export function TextViewer({ node }: { node: LibraryNode }) {
-  const { text, error, loading } = useFileText(node);
+  const { text, error, loading } = useFileText(node, {
+    maxBytes: TEXT_PREVIEW_MAX_BYTES,
+  });
 
   if (error) return <ViewerError message={error} />;
   if (loading || text === null) return <ViewerSkeleton />;

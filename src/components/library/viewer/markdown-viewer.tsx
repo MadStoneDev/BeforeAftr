@@ -6,8 +6,12 @@ import { useFileText } from "@/lib/library/use-file";
 import { RichContent } from "./rich-content";
 import { ViewerError, ViewerSkeleton } from "./viewer-skeleton";
 
+const MARKDOWN_PREVIEW_MAX_BYTES = 2 * 1024 * 1024;
+
 export function MarkdownViewer({ node }: { node: LibraryNode }) {
-  const { text, error, loading } = useFileText(node);
+  const { text, error, loading } = useFileText(node, {
+    maxBytes: MARKDOWN_PREVIEW_MAX_BYTES,
+  });
   const [html, setHtml] = useState<string | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
 

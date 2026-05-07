@@ -7,7 +7,9 @@ import {
   countFiles,
   findNodeByPath,
 } from "@/lib/library/tree-builder";
+import { scanWithFileSystemAPI } from "@/lib/library/fs-adapter";
 import type { LibraryNode, ScanResult } from "@/lib/library/types";
+import type { SortMode, ViewMode, ViewScope } from "@/lib/library/db";
 import {
   clearLibrary,
   loadLibrary,
@@ -17,10 +19,26 @@ import {
   saveLibrary,
   savePreferences,
 } from "@/lib/library/persistence";
+import { clearThumbnails } from "@/lib/library/thumbnails";
+import {
+  addFavorite,
+  getAllFavorites,
+  removeFavorite,
+} from "@/lib/library/favorites";
+import { recordView } from "@/lib/library/recents";
+import {
+  addToCollection,
+  createCollection,
+  getCollections,
+  type CollectionRecord,
+} from "@/lib/library/collections";
 import { DirectoryPicker } from "./directory-picker";
+import { Modal } from "./modal";
 import { Sidebar, type SidebarState } from "./sidebar";
 import { TagChip } from "./tag-chip";
 import { Viewer } from "./viewer/viewer";
+import { CompareViewer } from "./viewer/compare-viewer";
+import { ContextMenu } from "./gallery/context-menu";
 
 type SavedLibrary = {
   rootName: string;
@@ -37,9 +55,24 @@ export function LibraryShell() {
   const [sidebarState, setSidebarState] = useState<SidebarState>("expanded");
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
-  const [galleryRecursive, setGalleryRecursive] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("gallery");
+  const [viewScope, setViewScope] = useState<ViewScope>("directory");
   const [booting, setBooting] = useState(true);
   const [savedLibrary, setSavedLibrary] = useState<SavedLibrary | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [sortMode, setSortMode] = useState<SortMode>("name-asc");
+  const [topicId, setTopicId] = useState<string | null>("dnd-maps");
+  const [favoritePaths, setFavoritePaths] = useState<Set<string>>(new Set());
+  const [collections, setCollections] = useState<CollectionRecord[]>([]);
+  const [compareTarget, setCompareTarget] = useState<LibraryNode | null>(null);
+  const [comparePicking, setComparePicking] = useState<LibraryNode | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    node: LibraryNode;
+  } | null>(null);
 
   const lastNonHidden = useRef<SidebarState>("expanded");
 
@@ -52,15 +85,46 @@ export function LibraryShell() {
   const tree = useMemo(
     () =>
       scanResult
-        ? buildTree(scanResult.rootName || "Library", scanResult.entries)
+        ? buildTree(scanResult.rootName || "Library", scanResult.entries, topicId)
         : null,
-    [scanResult],
+    [scanResult, topicId],
   );
 
   const fileCount = useMemo(
     () => (tree ? countFiles(tree) : 0),
     [tree],
   );
+
+  const trimmedQuery = searchQuery.trim();
+  const searchActive = trimmedQuery.length > 0;
+
+  const searchVisibleSet = useMemo(() => {
+    if (!tree || !searchActive) return null;
+    const lower = trimmedQuery.toLowerCase();
+    const visible = new Set<string>();
+    const walk = (node: LibraryNode, ancestors: string[]): boolean => {
+      const nameMatch = node.name.toLowerCase().includes(lower);
+      const tagMatch = node.tags.some((t) => t.toLowerCase().includes(lower));
+      let childMatched = false;
+      if (node.children) {
+        const next = [...ancestors, node.path];
+        for (const c of node.children) {
+          if (walk(c, next)) childMatched = true;
+        }
+      }
+      if (nameMatch || tagMatch || childMatched) {
+        visible.add(node.path);
+        for (const a of ancestors) visible.add(a);
+        return true;
+      }
+      return false;
+    };
+    walk(tree, []);
+    return visible;
+  }, [tree, searchActive, trimmedQuery]);
+
+  const searchHasResults =
+    searchVisibleSet === null || searchVisibleSet.size > 0;
 
   // Load persisted state on mount.
   useEffect(() => {
@@ -81,7 +145,10 @@ export function LibraryShell() {
           }
           setActiveTags(new Set(prefs.activeTags));
           setExpandedPaths(new Set(prefs.expandedPaths));
-          setGalleryRecursive(prefs.galleryRecursive);
+          setViewMode(prefs.viewMode);
+          setViewScope(prefs.viewScope);
+          if (prefs.sortMode) setSortMode(prefs.sortMode);
+          if (prefs.topicId !== undefined) setTopicId(prefs.topicId);
           setPendingSelectedPath(prefs.selectedPath);
         }
 
@@ -101,6 +168,14 @@ export function LibraryShell() {
               entries: lib.entries,
             });
           }
+        }
+        const [favs, colls] = await Promise.all([
+          getAllFavorites(),
+          getCollections(),
+        ]);
+        if (!cancelled) {
+          setFavoritePaths(favs);
+          setCollections(colls);
         }
       } finally {
         if (!cancelled) setBooting(false);
@@ -150,7 +225,10 @@ export function LibraryShell() {
         activeTags: Array.from(activeTags),
         expandedPaths: Array.from(expandedPaths),
         selectedPath: selected?.path ?? null,
-        galleryRecursive,
+        viewMode,
+        viewScope,
+        sortMode,
+        topicId,
       }).catch(() => undefined);
     }, 250);
     return () => window.clearTimeout(id);
@@ -160,7 +238,10 @@ export function LibraryShell() {
     activeTags,
     expandedPaths,
     selected,
-    galleryRecursive,
+    viewMode,
+    viewScope,
+    sortMode,
+    topicId,
   ]);
 
   // Keyboard shortcuts.
@@ -184,13 +265,32 @@ export function LibraryShell() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Back button protection — prevent accidental exit.
+  useEffect(() => {
+    history.pushState({ library: true }, "", window.location.href);
+    const onPop = () => {
+      history.pushState({ library: true }, "", window.location.href);
+      setShowExitConfirm(true);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  const handleConfirmExit = () => {
+    setShowExitConfirm(false);
+    window.removeEventListener("popstate", () => {});
+    history.go(-2);
+  };
+
   const handlePicked = (result: ScanResult) => {
     setScanResult(result);
     setSelected(null);
     setActiveTags(new Set());
     setExpandedPaths(new Set());
-    setGalleryRecursive(false);
+    setViewMode("gallery");
+    setViewScope("directory");
     setSavedLibrary(null);
+    void clearThumbnails();
     void saveLibrary(result);
   };
 
@@ -213,10 +313,37 @@ export function LibraryShell() {
     setSelected(null);
     setActiveTags(new Set());
     setExpandedPaths(new Set());
-    setGalleryRecursive(false);
+    setViewMode("gallery");
+    setViewScope("directory");
     setSavedLibrary(null);
+    setSearchQuery("");
     void clearLibrary();
+    void clearThumbnails();
   };
+
+  const handleRefresh = useCallback(async () => {
+    if (!scanResult?.rootHandle || refreshing) return;
+    setRefreshing(true);
+    try {
+      let perm = await queryHandlePermission(scanResult.rootHandle);
+      if (perm !== "granted") {
+        perm = await requestHandlePermission(scanResult.rootHandle);
+        if (perm !== "granted") return;
+      }
+      const result = await scanWithFileSystemAPI(scanResult.rootHandle, {
+        recursive: true,
+      });
+      const oldPath = selected?.path ?? null;
+      setSelected(null);
+      setScanResult(result);
+      void saveLibrary(result);
+      if (oldPath !== null) setPendingSelectedPath(oldPath);
+    } catch {
+      /* swallow — user can re-pick if something is broken */
+    } finally {
+      setRefreshing(false);
+    }
+  }, [scanResult, refreshing, selected]);
 
   const toggleSidebar = () =>
     setSidebarState((s) => {
@@ -241,6 +368,62 @@ export function LibraryShell() {
   const clearTags = useCallback(() => {
     setActiveTags(new Set());
   }, []);
+
+  const toggleFavorite = useCallback((path: string) => {
+    setFavoritePaths((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) {
+        next.delete(path);
+        void removeFavorite(path);
+      } else {
+        next.add(path);
+        void addFavorite(path);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSelect = useCallback(
+    (node: LibraryNode) => {
+      if (comparePicking) {
+        if (node.kind === "file" && node.fileKind === "image") {
+          setCompareTarget(node);
+          setComparePicking(null);
+        }
+        return;
+      }
+      setSelected(node);
+      if (node.kind === "file") {
+        void recordView(node.path);
+      }
+    },
+    [comparePicking],
+  );
+
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent, node: LibraryNode) => {
+      setContextMenu({ x: e.clientX, y: e.clientY, node });
+    },
+    [],
+  );
+
+  const handleAddToCollection = useCallback(
+    async (collectionId: string, path: string) => {
+      await addToCollection(collectionId, path);
+    },
+    [],
+  );
+
+  const handleNewCollection = useCallback(
+    async (path: string) => {
+      const name = prompt("Collection name:");
+      if (!name?.trim()) return;
+      const id = await createCollection(name.trim());
+      await addToCollection(id, path);
+      setCollections(await getCollections());
+    },
+    [],
+  );
 
   const toggleExpand = useCallback((path: string) => {
     setExpandedPaths((prev) => {
@@ -289,8 +472,15 @@ export function LibraryShell() {
         selectedPath={selected?.path ?? null}
         expandedPaths={expandedPaths}
         onToggleExpand={toggleExpand}
-        onSelect={setSelected}
+        onSelect={handleSelect}
         onChangeFolder={handleChangeFolder}
+        onRefresh={scanResult?.rootHandle ? handleRefresh : undefined}
+        refreshing={refreshing}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchVisibleSet={searchVisibleSet}
+        searchActive={searchActive}
+        searchHasResults={searchHasResults}
       />
       <main className="relative flex min-w-0 flex-1 flex-col">
         <header className="flex h-12 shrink-0 items-center gap-4 border-b border-white/[0.06] px-6">
@@ -344,17 +534,80 @@ export function LibraryShell() {
           </span>
         </header>
         <div className="min-h-0 flex-1">
-          <Viewer
-            node={selected}
-            onSelect={setSelected}
-            activeTagsLower={activeTags}
-            onToggleTag={toggleTag}
-            onClearTags={clearTags}
-            galleryRecursive={galleryRecursive}
-            onToggleGalleryRecursive={setGalleryRecursive}
-          />
+          {comparePicking && selected && (
+            <div className="flex h-9 items-center gap-2 border-b border-amber-500/20 bg-amber-500/[0.06] px-4 text-xs text-amber-300">
+              <span>Click an image to compare with {comparePicking.name}</span>
+              <button
+                type="button"
+                onClick={() => setComparePicking(null)}
+                className="ml-auto rounded px-2 py-0.5 text-neutral-400 hover:bg-white/[0.06] hover:text-neutral-200"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+          {compareTarget && comparePicking === null && selected?.kind === "file" ? (
+            <CompareViewer
+              left={compareTarget}
+              right={selected}
+              onClose={() => setCompareTarget(null)}
+            />
+          ) : (
+            <Viewer
+              node={selected}
+              onSelect={handleSelect}
+              activeTagsLower={activeTags}
+              onToggleTag={toggleTag}
+              onClearTags={clearTags}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              viewScope={viewScope}
+              onViewScopeChange={setViewScope}
+              sortMode={sortMode}
+              onSortModeChange={setSortMode}
+              favoritePaths={favoritePaths}
+              onToggleFavorite={toggleFavorite}
+              onContextMenu={handleContextMenu}
+            />
+          )}
         </div>
       </main>
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          isFavorite={favoritePaths.has(contextMenu.node.path)}
+          collections={collections}
+          onClose={() => setContextMenu(null)}
+          onToggleFavorite={() => toggleFavorite(contextMenu.node.path)}
+          onAddToCollection={(collId) => {
+            void handleAddToCollection(collId, contextMenu.node.path);
+          }}
+          onNewCollection={() => {
+            void handleNewCollection(contextMenu.node.path);
+          }}
+          onCompare={() => {
+            setComparePicking(contextMenu.node);
+          }}
+        />
+      )}
+
+      <Modal
+        open={showExitConfirm}
+        onClose={() => setShowExitConfirm(false)}
+        title="Leave Library?"
+        primaryAction={{
+          label: "Stay",
+          onClick: () => setShowExitConfirm(false),
+        }}
+        secondaryAction={{
+          label: "Leave",
+          onClick: handleConfirmExit,
+        }}
+      >
+        You&apos;ll lose your current browsing context if you navigate away.
+      </Modal>
     </div>
   );
 }
