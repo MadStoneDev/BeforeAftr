@@ -95,7 +95,16 @@ export function LibraryShell() {
     [tree],
   );
 
-  const trimmedQuery = searchQuery.trim();
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      setDebouncedQuery(searchQuery.trim());
+    }, 400);
+    return () => window.clearTimeout(id);
+  }, [searchQuery]);
+
+  const trimmedQuery = debouncedQuery;
   const searchActive = trimmedQuery.length > 0;
 
   const searchVisibleSet = useMemo(() => {
