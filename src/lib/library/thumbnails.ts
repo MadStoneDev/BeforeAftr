@@ -1,7 +1,8 @@
 import { getDB, type ThumbnailRecord } from "./db";
 import { analyzeColors } from "./color-analysis";
 
-const THUMBNAIL_MAX_DIM = 280;
+const THUMBNAIL_MIN_SIDE = 300;
+const THUMBNAIL_MAX_LONG = 600;
 const THUMBNAIL_QUALITY = 0.75;
 
 export type ThumbnailResult = {
@@ -82,13 +83,19 @@ export async function generateThumbnail(file: File): Promise<ThumbnailResult | n
   try {
     const origW = bitmap.width;
     const origH = bitmap.height;
+    const shortest = Math.min(origW, origH);
     const longest = Math.max(origW, origH);
 
-    if (longest <= THUMBNAIL_MAX_DIM) {
+    if (shortest <= THUMBNAIL_MIN_SIDE) {
       return null;
     }
 
-    const ratio = THUMBNAIL_MAX_DIM / longest;
+    // Scale so the short side is at least THUMBNAIL_MIN_SIDE
+    // but the long side doesn't exceed THUMBNAIL_MAX_LONG
+    const ratioByShort = THUMBNAIL_MIN_SIDE / shortest;
+    const ratioByLong = THUMBNAIL_MAX_LONG / longest;
+    const ratio = Math.min(ratioByShort, ratioByLong);
+
     const w = Math.max(1, Math.round(origW * ratio));
     const h = Math.max(1, Math.round(origH * ratio));
 
