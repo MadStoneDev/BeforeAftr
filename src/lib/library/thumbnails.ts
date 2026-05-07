@@ -1,6 +1,7 @@
 import { getDB, type ThumbnailRecord } from "./db";
 import { analyzeColors } from "./color-analysis";
 
+const THUMB_VERSION = 3;
 const THUMBNAIL_MIN_SIDE = 300;
 const THUMBNAIL_MAX_LONG = 600;
 const THUMBNAIL_QUALITY = 0.75;
@@ -17,7 +18,7 @@ export function getThumbnailKey(
   size: number,
   lastModified: number,
 ): string {
-  return `${path}|${size}|${lastModified}`;
+  return `v${THUMB_VERSION}|${path}|${size}|${lastModified}`;
 }
 
 export async function loadThumbnail(key: string): Promise<ThumbnailRecord | null> {
