@@ -13,6 +13,7 @@ export type ViewMode = "gallery" | "explorer";
 export type ViewScope = "directory" | "recursive";
 
 export type SortMode = "name-asc" | "name-desc" | "date" | "dimensions" | "color";
+export type FileTypeFilter = "images" | "documents" | "text" | "other";
 
 export type PreferencesRecord = {
   id: "main";

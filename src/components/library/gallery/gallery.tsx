@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { LibraryNode } from "@/lib/library/types";
-import type { SortMode, ViewMode, ViewScope } from "@/lib/library/db";
-import { ChevronDown } from "lucide-react";
+import type { FileTypeFilter, SortMode, ViewMode, ViewScope } from "@/lib/library/db";
+import { ChevronDown, ImageIcon, FileText, File } from "lucide-react";
 import { GalleryTile } from "./gallery-tile";
 import { TagFilterBar } from "./tag-filter-bar";
 
@@ -87,6 +87,26 @@ export function Gallery({
   const isRecursive = viewScope === "recursive";
   const isExplorer = viewMode === "explorer";
 
+  const ALL_TYPE_FILTERS: FileTypeFilter[] = ["images", "documents", "text", "other"];
+  const [activeTypeFilters, setActiveTypeFilters] = useState<Set<FileTypeFilter>>(
+    () => new Set(ALL_TYPE_FILTERS),
+  );
+
+  const toggleTypeFilter = (filter: FileTypeFilter) => {
+    setActiveTypeFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(filter)) {
+        if (next.size === 1) return prev;
+        next.delete(filter);
+      } else {
+        next.add(filter);
+      }
+      return next;
+    });
+  };
+
+  const allTypesActive = activeTypeFilters.size === ALL_TYPE_FILTERS.length;
+
   const items = useMemo(() => {
     const out: LibraryNode[] = [];
     const walk = (n: LibraryNode, depth: number) => {
@@ -119,8 +139,21 @@ export function Gallery({
 
   const filtered = useMemo(() => {
     let result = items;
+
+    if (!allTypesActive) {
+      result = result.filter((item) => {
+        if (item.kind === "directory") return true;
+        const fk = item.fileKind;
+        if (activeTypeFilters.has("images") && fk === "image") return true;
+        if (activeTypeFilters.has("documents") && (fk === "pdf" || fk === "doc")) return true;
+        if (activeTypeFilters.has("text") && (fk === "text" || fk === "markdown")) return true;
+        if (activeTypeFilters.has("other") && fk === "other") return true;
+        return false;
+      });
+    }
+
     if (activeTagsLower.size > 0) {
-      result = items.filter((item) => {
+      result = result.filter((item) => {
         const itemLower = new Set(item.tags.map((t) => t.toLowerCase()));
         for (const active of activeTagsLower) {
           if (!itemLower.has(active)) return false;
@@ -154,14 +187,14 @@ export function Gallery({
         break;
     }
     return sorted;
-  }, [items, activeTagsLower, sortMode]);
+  }, [items, activeTagsLower, sortMode, activeTypeFilters, allTypesActive]);
 
   const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setVisibleCount(BATCH_SIZE);
-  }, [node, activeTagsLower, viewMode, viewScope, sortMode]);
+  }, [node, activeTagsLower, viewMode, viewScope, sortMode, activeTypeFilters]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -231,6 +264,31 @@ export function Gallery({
             onChange={onViewScopeChange}
           />
         </div>
+      </div>
+
+      <div className="flex items-center gap-1.5 border-b border-white/[0.06] px-4 py-1.5">
+        {(
+          [
+            { key: "images", label: "Images", icon: ImageIcon },
+            { key: "documents", label: "Docs", icon: File },
+            { key: "text", label: "Text", icon: FileText },
+            { key: "other", label: "Other", icon: File },
+          ] as const
+        ).map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => toggleTypeFilter(key)}
+            className={`inline-flex h-6 items-center gap-1 rounded-full px-2.5 text-[11px] font-medium transition-colors duration-100 ${
+              activeTypeFilters.has(key)
+                ? "bg-white/[0.10] text-neutral-100"
+                : "text-neutral-600 hover:text-neutral-400"
+            }`}
+          >
+            <Icon size={11} />
+            {label}
+          </button>
+        ))}
       </div>
 
       <TagFilterBar

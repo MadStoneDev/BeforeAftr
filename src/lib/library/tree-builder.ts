@@ -1,6 +1,17 @@
 import { deriveTagsFromFilename, deriveTagsFromPath, mergeTagList } from "./tagging";
 import type { LibraryEntry, LibraryNode } from "./types";
 
+const JUNK_FILES = new Set([
+  ".ds_store",
+  "thumbs.db",
+  "desktop.ini",
+  ".gitkeep",
+  ".gitignore",
+  ".npmignore",
+  "icon\r",
+  ".localized",
+]);
+
 export function buildTree(
   rootName: string,
   entries: LibraryEntry[],
@@ -41,6 +52,10 @@ export function buildTree(
   const sorted = [...entries].sort((a, b) => a.path.localeCompare(b.path));
 
   for (const entry of sorted) {
+    if (entry.kind === "file" && JUNK_FILES.has(entry.name.toLowerCase())) {
+      continue;
+    }
+
     const slash = entry.path.lastIndexOf("/");
     const parentPath = slash < 0 ? "" : entry.path.slice(0, slash);
     const parent = ensureDir(parentPath);

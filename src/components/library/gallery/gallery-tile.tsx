@@ -80,11 +80,14 @@ export function GalleryTile({
             return;
           }
 
-          setBlobUrl(file);
-
           const result = await generateThumbnail(file);
           if (cancelled) return;
-          if (result) void saveThumbnail(key, result);
+          if (result) {
+            setBlobUrl(result.blob);
+            void saveThumbnail(key, result);
+          } else {
+            setBlobUrl(file);
+          }
         } catch {
           /* swallow — tile stays as placeholder */
         }

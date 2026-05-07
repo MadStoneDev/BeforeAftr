@@ -1,8 +1,8 @@
 import { getDB, type ThumbnailRecord } from "./db";
 import { analyzeColors } from "./color-analysis";
 
-const THUMBNAIL_MAX_DIM = 480;
-const THUMBNAIL_QUALITY = 0.82;
+const THUMBNAIL_MAX_DIM = 280;
+const THUMBNAIL_QUALITY = 0.75;
 
 export type ThumbnailResult = {
   blob: Blob;
