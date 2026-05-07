@@ -100,11 +100,27 @@ export function LibraryShell() {
 
   const searchVisibleSet = useMemo(() => {
     if (!tree || !searchActive) return null;
-    const lower = trimmedQuery.toLowerCase();
+    const tokens = trimmedQuery
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((t) => t.length > 0);
+    if (tokens.length === 0) return null;
+
     const visible = new Set<string>();
+
+    const nodeMatchesToken = (node: LibraryNode, token: string): boolean => {
+      const nameLower = node.name.toLowerCase();
+      if (nameLower.includes(token)) return true;
+      if (node.tags.some((t) => t.toLowerCase().includes(token))) return true;
+      const pathSegments = node.path.toLowerCase().split("/");
+      if (pathSegments.some((seg) => seg.includes(token))) return true;
+      return false;
+    };
+
     const walk = (node: LibraryNode, ancestors: string[]): boolean => {
-      const nameMatch = node.name.toLowerCase().includes(lower);
-      const tagMatch = node.tags.some((t) => t.toLowerCase().includes(lower));
+      const matchCount = tokens.filter((t) => nodeMatchesToken(node, t)).length;
+      const selfMatches = matchCount > 0;
+
       let childMatched = false;
       if (node.children) {
         const next = [...ancestors, node.path];
@@ -112,7 +128,8 @@ export function LibraryShell() {
           if (walk(c, next)) childMatched = true;
         }
       }
-      if (nameMatch || tagMatch || childMatched) {
+
+      if (selfMatches || childMatched) {
         visible.add(node.path);
         for (const a of ancestors) visible.add(a);
         return true;
@@ -568,6 +585,7 @@ export function LibraryShell() {
               favoritePaths={favoritePaths}
               onToggleFavorite={toggleFavorite}
               onContextMenu={handleContextMenu}
+              searchQuery={searchQuery}
             />
           )}
         </div>

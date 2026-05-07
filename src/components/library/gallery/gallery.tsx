@@ -25,6 +25,7 @@ type Props = {
   favoritePaths: ReadonlySet<string>;
   onToggleFavorite: (path: string) => void;
   onContextMenu?: (e: React.MouseEvent, node: LibraryNode) => void;
+  searchQuery?: string;
 };
 
 type ToggleOption<T extends string> = { value: T; label: string };
@@ -83,6 +84,7 @@ export function Gallery({
   favoritePaths,
   onToggleFavorite,
   onContextMenu,
+  searchQuery = "",
 }: Props) {
   const isRecursive = viewScope === "recursive";
   const isExplorer = viewMode === "explorer";
@@ -152,6 +154,40 @@ export function Gallery({
       });
     }
 
+    const searchTokens = searchQuery
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((t) => t.length > 0);
+
+    if (searchTokens.length > 0) {
+      result = result.filter((item) => {
+        const nameLower = item.name.toLowerCase();
+        const pathLower = item.path.toLowerCase();
+        const tagsLower = item.tags.map((t) => t.toLowerCase());
+        return searchTokens.some(
+          (token) =>
+            nameLower.includes(token) ||
+            pathLower.includes(token) ||
+            tagsLower.some((t) => t.includes(token)),
+        );
+      });
+      result.sort((a, b) => {
+        const scoreNode = (n: LibraryNode) => {
+          const nameLower = n.name.toLowerCase();
+          const tagsLower = n.tags.map((t) => t.toLowerCase());
+          const pathLower = n.path.toLowerCase();
+          let score = 0;
+          for (const token of searchTokens) {
+            if (nameLower.includes(token)) score += 3;
+            else if (tagsLower.some((t) => t.includes(token))) score += 2;
+            else if (pathLower.includes(token)) score += 1;
+          }
+          return score;
+        };
+        return scoreNode(b) - scoreNode(a);
+      });
+    }
+
     if (activeTagsLower.size > 0) {
       result = result.filter((item) => {
         const itemLower = new Set(item.tags.map((t) => t.toLowerCase()));
@@ -187,7 +223,7 @@ export function Gallery({
         break;
     }
     return sorted;
-  }, [items, activeTagsLower, sortMode, activeTypeFilters, allTypesActive]);
+  }, [items, activeTagsLower, sortMode, activeTypeFilters, allTypesActive, searchQuery]);
 
   const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
   const sentinelRef = useRef<HTMLDivElement>(null);

@@ -26,6 +26,7 @@ type Props = {
   favoritePaths: ReadonlySet<string>;
   onToggleFavorite: (path: string) => void;
   onContextMenu?: (e: React.MouseEvent, node: LibraryNode) => void;
+  searchQuery?: string;
 };
 
 export function Viewer({
@@ -43,6 +44,7 @@ export function Viewer({
   favoritePaths,
   onToggleFavorite,
   onContextMenu,
+  searchQuery,
 }: Props) {
   if (!node) {
     return (
@@ -76,6 +78,7 @@ export function Viewer({
         favoritePaths={favoritePaths}
         onToggleFavorite={onToggleFavorite}
         onContextMenu={onContextMenu}
+        searchQuery={searchQuery}
       />
     );
   }
