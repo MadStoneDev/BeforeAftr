@@ -3,16 +3,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Maximize2, Minimize2, RotateCcw } from "lucide-react";
 import type { LibraryNode } from "@/lib/library/types";
+import type { VariantGroup } from "@/lib/library/variant-grouping";
 import { useObjectUrl } from "@/lib/library/use-file";
 import { ViewerError, ViewerSkeleton } from "./viewer-skeleton";
+import { VariantStrip } from "./variant-strip";
 
-type Props = { node: LibraryNode };
+type Props = {
+  node: LibraryNode;
+  variantGroup?: VariantGroup;
+  onSelectVariant?: (node: LibraryNode) => void;
+};
 
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 10;
 const ZOOM_STEP = 0.15;
 
-export function ImageViewer({ node }: Props) {
+export function ImageViewer({ node, variantGroup, onSelectVariant }: Props) {
   const { url, error, loading } = useObjectUrl(node);
   const [zoom, setZoom] = useState(1);
   const [fitted, setFitted] = useState(true);
@@ -195,6 +201,13 @@ export function ImageViewer({ node }: Props) {
           />
         </div>
       </div>
+      {variantGroup && onSelectVariant && variantGroup.variants.length > 1 && (
+        <VariantStrip
+          variants={variantGroup.variants}
+          activeVariant={node}
+          onSelect={onSelectVariant}
+        />
+      )}
     </div>
   );
 }

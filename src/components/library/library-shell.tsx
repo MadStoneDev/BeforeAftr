@@ -32,6 +32,9 @@ import {
   getCollections,
   type CollectionRecord,
 } from "@/lib/library/collections";
+import { expandAllTokens } from "@/lib/library/synonyms";
+import type { VariantGroup } from "@/lib/library/variant-grouping";
+import { getWorkspaceById } from "@/lib/library/workspaces";
 import { DirectoryPicker } from "./directory-picker";
 import { Modal } from "./modal";
 import { Sidebar, type SidebarState } from "./sidebar";
@@ -39,6 +42,8 @@ import { TagChip } from "./tag-chip";
 import { Viewer } from "./viewer/viewer";
 import { CompareViewer } from "./viewer/compare-viewer";
 import { ContextMenu } from "./gallery/context-menu";
+import { WorkspaceSelector } from "./workspace/workspace-selector";
+import { WorkspaceSidebar } from "./workspace/workspace-sidebar";
 
 type SavedLibrary = {
   rootName: string;
@@ -73,6 +78,12 @@ export function LibraryShell() {
     y: number;
     node: LibraryNode;
   } | null>(null);
+  const [stackVariants, setStackVariants] = useState(true);
+  const [activeVariantGroup, setActiveVariantGroup] =
+    useState<VariantGroup | null>(null);
+  const [workspaceId, setWorkspaceId] = useState<string | null>("dnd-maps");
+  const [workspaceSidebarOpen, setWorkspaceSidebarOpen] = useState(true);
+  const activeWorkspace = workspaceId ? getWorkspaceById(workspaceId) : null;
 
   const lastNonHidden = useRef<SidebarState>("expanded");
 
@@ -107,27 +118,44 @@ export function LibraryShell() {
   const trimmedQuery = debouncedQuery;
   const searchActive = trimmedQuery.length > 0;
 
-  const searchVisibleSet = useMemo(() => {
-    if (!tree || !searchActive) return null;
+  const synonymData = useMemo(() => {
+    if (!searchActive) return null;
     const tokens = trimmedQuery
       .toLowerCase()
       .split(/\s+/)
       .filter((t) => t.length > 0);
     if (tokens.length === 0) return null;
+    return expandAllTokens(tokens);
+  }, [searchActive, trimmedQuery]);
+
+  const synonymHints = synonymData?.hints ?? null;
+
+  const searchVisibleSet = useMemo(() => {
+    if (!tree || !searchActive || !synonymData) return null;
+    const { expanded } = synonymData;
+    if (expanded.length === 0) return null;
 
     const visible = new Set<string>();
 
-    const nodeMatchesToken = (node: LibraryNode, token: string): boolean => {
+    const nodeMatchesTokenGroup = (
+      node: LibraryNode,
+      tokenGroup: string[],
+    ): boolean => {
       const nameLower = node.name.toLowerCase();
-      if (nameLower.includes(token)) return true;
-      if (node.tags.some((t) => t.toLowerCase().includes(token))) return true;
+      const tagsLower = node.tags.map((t) => t.toLowerCase());
       const pathSegments = node.path.toLowerCase().split("/");
-      if (pathSegments.some((seg) => seg.includes(token))) return true;
+      for (const token of tokenGroup) {
+        if (nameLower.includes(token)) return true;
+        if (tagsLower.some((t) => t.includes(token))) return true;
+        if (pathSegments.some((seg) => seg.includes(token))) return true;
+      }
       return false;
     };
 
     const walk = (node: LibraryNode, ancestors: string[]): boolean => {
-      const matchCount = tokens.filter((t) => nodeMatchesToken(node, t)).length;
+      const matchCount = expanded.filter((group) =>
+        nodeMatchesTokenGroup(node, group),
+      ).length;
       const selfMatches = matchCount > 0;
 
       let childMatched = false;
@@ -147,7 +175,7 @@ export function LibraryShell() {
     };
     walk(tree, []);
     return visible;
-  }, [tree, searchActive, trimmedQuery]);
+  }, [tree, searchActive, synonymData]);
 
   const searchHasResults =
     searchVisibleSet === null || searchVisibleSet.size > 0;
@@ -175,6 +203,8 @@ export function LibraryShell() {
           setViewScope(prefs.viewScope);
           if (prefs.sortMode) setSortMode(prefs.sortMode);
           if (prefs.topicId !== undefined) setTopicId(prefs.topicId);
+          if (prefs.stackVariants !== undefined) setStackVariants(prefs.stackVariants);
+          if (prefs.workspaceId !== undefined) setWorkspaceId(prefs.workspaceId);
           setPendingSelectedPath(prefs.selectedPath);
         }
 
@@ -255,6 +285,8 @@ export function LibraryShell() {
         viewScope,
         sortMode,
         topicId,
+        stackVariants,
+        workspaceId,
       }).catch(() => undefined);
     }, 250);
     return () => window.clearTimeout(id);
@@ -268,6 +300,8 @@ export function LibraryShell() {
     viewScope,
     sortMode,
     topicId,
+    stackVariants,
+    workspaceId,
   ]);
 
   // Keyboard shortcuts.
@@ -350,6 +384,7 @@ export function LibraryShell() {
   const handleRefresh = useCallback(async () => {
     if (!scanResult?.rootHandle || refreshing) return;
     setRefreshing(true);
+    void clearThumbnails();
     try {
       let perm = await queryHandlePermission(scanResult.rootHandle);
       if (perm !== "granted") {
@@ -395,6 +430,19 @@ export function LibraryShell() {
     setActiveTags(new Set());
   }, []);
 
+  const togglePresetTags = useCallback((tags: string[]) => {
+    setActiveTags((prev) => {
+      const next = new Set(prev);
+      const allActive = tags.every((t) => next.has(t.toLowerCase()));
+      if (allActive) {
+        for (const t of tags) next.delete(t.toLowerCase());
+      } else {
+        for (const t of tags) next.add(t.toLowerCase());
+      }
+      return next;
+    });
+  }, []);
+
   const toggleFavorite = useCallback((path: string) => {
     setFavoritePaths((prev) => {
       const next = new Set(prev);
@@ -418,12 +466,20 @@ export function LibraryShell() {
         }
         return;
       }
-      setSelected(node);
+      if (
+        activeVariantGroup &&
+        activeVariantGroup.variants.some((v) => v.path === node.path)
+      ) {
+        setSelected(node);
+      } else {
+        setActiveVariantGroup(null);
+        setSelected(node);
+      }
       if (node.kind === "file") {
         void recordView(node.path);
       }
     },
-    [comparePicking],
+    [comparePicking, activeVariantGroup],
   );
 
   const handleContextMenu = useCallback(
@@ -447,6 +503,15 @@ export function LibraryShell() {
       const id = await createCollection(name.trim());
       await addToCollection(id, path);
       setCollections(await getCollections());
+    },
+    [],
+  );
+
+  const handleSelectVariantGroup = useCallback(
+    (group: VariantGroup) => {
+      setActiveVariantGroup(group);
+      setSelected(group.representative);
+      void recordView(group.representative.path);
     },
     [],
   );
@@ -507,6 +572,7 @@ export function LibraryShell() {
         searchVisibleSet={searchVisibleSet}
         searchActive={searchActive}
         searchHasResults={searchHasResults}
+        synonymHints={synonymHints}
       />
       <main className="relative flex min-w-0 flex-1 flex-col">
         <header className="flex h-12 shrink-0 items-center gap-4 border-b border-white/[0.06] px-6">
@@ -555,9 +621,10 @@ export function LibraryShell() {
             </span>
           )}
 
-          <span className="hidden shrink-0 text-[11px] uppercase tracking-[0.08em] text-neutral-600 lg:inline">
-            Cmd/Ctrl + \\ · Shift for full-width
-          </span>
+          <WorkspaceSelector
+            activeId={workspaceId}
+            onChange={setWorkspaceId}
+          />
         </header>
         <div className="min-h-0 flex-1">
           {comparePicking && selected && (
@@ -595,10 +662,25 @@ export function LibraryShell() {
               onToggleFavorite={toggleFavorite}
               onContextMenu={handleContextMenu}
               searchQuery={searchQuery}
+              stackVariants={stackVariants}
+              onStackVariantsChange={setStackVariants}
+              onSelectVariantGroup={handleSelectVariantGroup}
+              activeVariantGroup={activeVariantGroup}
             />
           )}
         </div>
       </main>
+
+      {activeWorkspace && (
+        <WorkspaceSidebar
+          workspace={activeWorkspace}
+          open={workspaceSidebarOpen}
+          onToggle={() => setWorkspaceSidebarOpen((p) => !p)}
+          selectedNode={selected}
+          activeTagsLower={activeTags}
+          onTogglePresetTags={togglePresetTags}
+        />
+      )}
 
       {contextMenu && (
         <ContextMenu

@@ -25,6 +25,8 @@ export type PreferencesRecord = {
   viewScope: ViewScope;
   sortMode: SortMode;
   topicId: string | null;
+  stackVariants: boolean;
+  workspaceId: string | null;
 };
 
 export type ThumbnailRecord = {
@@ -40,6 +42,10 @@ export class LibraryDB extends Dexie {
   libraries!: EntityTable<LibraryRecord, "id">;
   preferences!: EntityTable<PreferencesRecord, "id">;
   thumbnails!: EntityTable<ThumbnailRecord, "id">;
+  mapNotes!: EntityTable<{ path: string; notes: string; usages: { date: number; sessionName?: string; note?: string }[]; userTags: string[]; createdAt: number; updatedAt: number }, "path">;
+  sessions!: EntityTable<{ id: string; name: string; notes: string; createdAt: number }, "id">;
+  sessionItems!: EntityTable<{ sessionId: string; path: string; order: number; note: string; addedAt: number }, "sessionId">;
+  ratings!: EntityTable<{ path: string; rating: number; ratedAt: number }, "path">;
 
   constructor() {
     super("BeforeAftrLibrary");
@@ -75,6 +81,21 @@ export class LibraryDB extends Dexie {
             delete rec.galleryRecursive;
           });
       });
+    this.version(4).stores({
+      libraries: "id, lastOpenedAt",
+      preferences: "id",
+      thumbnails: "id, createdAt",
+      favorites: "path, addedAt",
+      recentlyViewed: "path, viewedAt",
+      collections: "id, createdAt",
+      collectionItems: "[collectionId+path], collectionId, path, addedAt",
+      aiCredits: "id",
+      aiTags: "id",
+      mapNotes: "path",
+      sessions: "id, createdAt",
+      sessionItems: "[sessionId+path], sessionId",
+      ratings: "path",
+    });
   }
 }
 

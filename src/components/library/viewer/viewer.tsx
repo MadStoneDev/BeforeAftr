@@ -3,6 +3,7 @@
 import { Compass } from "lucide-react";
 import type { LibraryNode } from "@/lib/library/types";
 import type { SortMode, ViewMode, ViewScope } from "@/lib/library/db";
+import type { VariantGroup } from "@/lib/library/variant-grouping";
 import { Gallery } from "../gallery/gallery";
 import { DocViewer } from "./doc-viewer";
 import { ImageViewer } from "./image-viewer";
@@ -27,6 +28,10 @@ type Props = {
   onToggleFavorite: (path: string) => void;
   onContextMenu?: (e: React.MouseEvent, node: LibraryNode) => void;
   searchQuery?: string;
+  stackVariants?: boolean;
+  onStackVariantsChange?: (v: boolean) => void;
+  onSelectVariantGroup?: (group: VariantGroup) => void;
+  activeVariantGroup?: VariantGroup | null;
 };
 
 export function Viewer({
@@ -45,6 +50,10 @@ export function Viewer({
   onToggleFavorite,
   onContextMenu,
   searchQuery,
+  stackVariants,
+  onStackVariantsChange,
+  onSelectVariantGroup,
+  activeVariantGroup,
 }: Props) {
   if (!node) {
     return (
@@ -79,13 +88,22 @@ export function Viewer({
         onToggleFavorite={onToggleFavorite}
         onContextMenu={onContextMenu}
         searchQuery={searchQuery}
+        stackVariants={stackVariants}
+        onStackVariantsChange={onStackVariantsChange}
+        onSelectVariantGroup={onSelectVariantGroup}
       />
     );
   }
 
   switch (node.fileKind) {
     case "image":
-      return <ImageViewer node={node} />;
+      return (
+        <ImageViewer
+          node={node}
+          variantGroup={activeVariantGroup ?? undefined}
+          onSelectVariant={onSelect}
+        />
+      );
     case "pdf":
       return <PdfViewer node={node} />;
     case "markdown":

@@ -3,8 +3,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { LibraryNode } from "@/lib/library/types";
 import type { FileTypeFilter, SortMode, ViewMode, ViewScope } from "@/lib/library/db";
-import { ChevronDown, ImageIcon, FileText, File } from "lucide-react";
+import {
+  groupVariants,
+  isVariantGroup,
+  type VariantGroup,
+} from "@/lib/library/variant-grouping";
+import { expandAllTokens } from "@/lib/library/synonyms";
+import { ChevronDown, ImageIcon, FileText, File, Layers } from "lucide-react";
 import { GalleryTile } from "./gallery-tile";
+import { VariantTile } from "./variant-tile";
 import { TagFilterBar } from "./tag-filter-bar";
 
 const BATCH_SIZE = 60;
@@ -26,6 +33,9 @@ type Props = {
   onToggleFavorite: (path: string) => void;
   onContextMenu?: (e: React.MouseEvent, node: LibraryNode) => void;
   searchQuery?: string;
+  stackVariants?: boolean;
+  onStackVariantsChange?: (v: boolean) => void;
+  onSelectVariantGroup?: (group: VariantGroup) => void;
 };
 
 type ToggleOption<T extends string> = { value: T; label: string };
@@ -85,6 +95,9 @@ export function Gallery({
   onToggleFavorite,
   onContextMenu,
   searchQuery = "",
+  stackVariants = true,
+  onStackVariantsChange,
+  onSelectVariantGroup,
 }: Props) {
   const isRecursive = viewScope === "recursive";
   const isExplorer = viewMode === "explorer";
@@ -154,21 +167,25 @@ export function Gallery({
       });
     }
 
-    const searchTokens = searchQuery
+    const rawTokens = searchQuery
       .toLowerCase()
       .split(/\s+/)
       .filter((t) => t.length > 0);
 
-    if (searchTokens.length > 0) {
+    if (rawTokens.length > 0) {
+      const { expanded } = expandAllTokens(rawTokens);
+
       result = result.filter((item) => {
         const nameLower = item.name.toLowerCase();
         const pathLower = item.path.toLowerCase();
         const tagsLower = item.tags.map((t) => t.toLowerCase());
-        return searchTokens.some(
-          (token) =>
-            nameLower.includes(token) ||
-            pathLower.includes(token) ||
-            tagsLower.some((t) => t.includes(token)),
+        return expanded.some((tokenGroup) =>
+          tokenGroup.some(
+            (token) =>
+              nameLower.includes(token) ||
+              pathLower.includes(token) ||
+              tagsLower.some((t) => t.includes(token)),
+          ),
         );
       });
       result.sort((a, b) => {
@@ -177,10 +194,14 @@ export function Gallery({
           const tagsLower = n.tags.map((t) => t.toLowerCase());
           const pathLower = n.path.toLowerCase();
           let score = 0;
-          for (const token of searchTokens) {
-            if (nameLower.includes(token)) score += 3;
-            else if (tagsLower.some((t) => t.includes(token))) score += 2;
-            else if (pathLower.includes(token)) score += 1;
+          for (let i = 0; i < expanded.length; i++) {
+            const directToken = rawTokens[i];
+            const group = expanded[i];
+            if (nameLower.includes(directToken)) score += 4;
+            else if (group.some((t) => nameLower.includes(t))) score += 3;
+            else if (tagsLower.some((tl) => group.some((t) => tl.includes(t))))
+              score += 2;
+            else if (pathLower.includes(directToken)) score += 1;
           }
           return score;
         };
@@ -225,12 +246,19 @@ export function Gallery({
     return sorted;
   }, [items, activeTagsLower, sortMode, activeTypeFilters, allTypesActive, searchQuery]);
 
+  const stacked = useMemo(() => {
+    if (!stackVariants) return null;
+    return groupVariants(filtered);
+  }, [filtered, stackVariants]);
+
+  const displayItems = stacked ?? filtered;
+
   const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setVisibleCount(BATCH_SIZE);
-  }, [node, activeTagsLower, viewMode, viewScope, sortMode, activeTypeFilters]);
+  }, [node, activeTagsLower, viewMode, viewScope, sortMode, activeTypeFilters, stackVariants]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -239,7 +267,7 @@ export function Gallery({
       (entries) => {
         if (entries[0]?.isIntersecting) {
           setVisibleCount((prev) =>
-            Math.min(prev + BATCH_SIZE, MAX_VISIBLE, filtered.length),
+            Math.min(prev + BATCH_SIZE, MAX_VISIBLE, displayItems.length),
           );
         }
       },
@@ -247,14 +275,17 @@ export function Gallery({
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [filtered.length]);
+  }, [displayItems.length]);
 
-  const visible = filtered.slice(0, visibleCount);
-  const capped = filtered.length > MAX_VISIBLE && visibleCount >= MAX_VISIBLE;
-  const hasMore = visibleCount < filtered.length && !capped;
+  const visible = displayItems.slice(0, visibleCount);
+  const capped = displayItems.length > MAX_VISIBLE && visibleCount >= MAX_VISIBLE;
+  const hasMore = visibleCount < displayItems.length && !capped;
 
   const fileCount = filtered.filter((t) => t.kind === "file").length;
   const dirCount = filtered.filter((t) => t.kind === "directory").length;
+  const variantGroupCount = stacked
+    ? stacked.filter(isVariantGroup).length
+    : 0;
   const hasActive = activeTagsLower.size > 0;
 
   return (
@@ -268,6 +299,13 @@ export function Gallery({
               {" · "}
               {dirCount.toLocaleString()}{" "}
               {dirCount === 1 ? "folder" : "folders"}
+            </>
+          )}
+          {variantGroupCount > 0 && (
+            <>
+              {" · "}
+              {variantGroupCount.toLocaleString()}{" "}
+              {variantGroupCount === 1 ? "stack" : "stacks"}
             </>
           )}
           {hasActive && " (filtered)"}
@@ -299,6 +337,21 @@ export function Gallery({
             value={viewScope}
             onChange={onViewScopeChange}
           />
+          {onStackVariantsChange && (
+            <button
+              type="button"
+              onClick={() => onStackVariantsChange(!stackVariants)}
+              title={stackVariants ? "Unstack variants" : "Stack variants"}
+              className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-medium transition-colors duration-100 ${
+                stackVariants
+                  ? "border-white/15 bg-white/[0.10] text-neutral-100"
+                  : "border-white/[0.08] bg-white/[0.02] text-neutral-500 hover:text-neutral-300"
+              }`}
+            >
+              <Layers size={12} strokeWidth={1.8} />
+              Stack
+            </button>
+          )}
         </div>
       </div>
 
@@ -355,16 +408,24 @@ export function Gallery({
         ) : (
           <>
             <div className="flex flex-wrap gap-2">
-              {visible.map((tile) => (
-                <GalleryTile
-                  key={tile.path}
-                  node={tile}
-                  onSelect={onSelect}
-                  isFavorite={favoritePaths.has(tile.path)}
-                  onToggleFavorite={onToggleFavorite}
-                  onContextMenu={onContextMenu}
-                />
-              ))}
+              {visible.map((item) =>
+                isVariantGroup(item) ? (
+                  <VariantTile
+                    key={`vg:${item.baseName}:${item.representative.path}`}
+                    group={item}
+                    onSelect={(g) => onSelectVariantGroup?.(g)}
+                  />
+                ) : (
+                  <GalleryTile
+                    key={item.path}
+                    node={item}
+                    onSelect={onSelect}
+                    isFavorite={favoritePaths.has(item.path)}
+                    onToggleFavorite={onToggleFavorite}
+                    onContextMenu={onContextMenu}
+                  />
+                ),
+              )}
             </div>
             {hasMore && <div ref={sentinelRef} className="h-px w-full" />}
             {capped && (

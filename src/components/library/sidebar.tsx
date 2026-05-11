@@ -31,6 +31,7 @@ type Props = {
   searchVisibleSet: ReadonlySet<string> | null;
   searchActive: boolean;
   searchHasResults: boolean;
+  synonymHints?: Map<string, string[]> | null;
 };
 
 const EASE = "cubic-bezier(0.16,1,0.3,1)";
@@ -53,6 +54,7 @@ export function Sidebar({
   searchVisibleSet,
   searchActive,
   searchHasResults,
+  synonymHints,
 }: Props) {
   const [peek, setPeek] = useState(false);
   const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -220,6 +222,18 @@ export function Sidebar({
             )}
           </div>
         </div>
+
+        {/* Synonym hint */}
+        {synonymHints && synonymHints.size > 0 && (
+          <div className="px-3 pt-1.5">
+            <p className="text-[10px] italic text-neutral-600 leading-relaxed">
+              Also matching:{" "}
+              {Array.from(synonymHints.entries())
+                .flatMap(([, syns]) => syns.slice(0, 4))
+                .join(", ")}
+            </p>
+          </div>
+        )}
 
         {/* Section label */}
         <div className="px-3 pt-3 pb-1">
