@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronsRight } from "lucide-react";
+import { ArrowLeft, ChevronsRight } from "lucide-react";
 import {
   buildTree,
   countFiles,
@@ -86,6 +86,8 @@ export function LibraryShell() {
   const activeWorkspace = workspaceId ? getWorkspaceById(workspaceId) : null;
 
   const lastNonHidden = useRef<SidebarState>("expanded");
+  const lastDirectory = useRef<LibraryNode | null>(null);
+  const scrollPositions = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     if (sidebarState !== "hidden") {
@@ -466,6 +468,9 @@ export function LibraryShell() {
         }
         return;
       }
+      if (node.kind === "file" && selected?.kind === "directory") {
+        lastDirectory.current = selected;
+      }
       if (
         activeVariantGroup &&
         activeVariantGroup.variants.some((v) => v.path === node.path)
@@ -479,8 +484,51 @@ export function LibraryShell() {
         void recordView(node.path);
       }
     },
-    [comparePicking, activeVariantGroup],
+    [comparePicking, activeVariantGroup, selected],
   );
+
+  const handleGoBack = useCallback(() => {
+    if (lastDirectory.current) {
+      setActiveVariantGroup(null);
+      setSelected(lastDirectory.current);
+    } else if (tree && selected?.kind === "file") {
+      const parentPath = selected.path.substring(
+        0,
+        selected.path.lastIndexOf("/"),
+      );
+      const parent = parentPath ? findNodeByPath(tree, parentPath) : tree;
+      setActiveVariantGroup(null);
+      setSelected(parent ?? tree);
+    }
+  }, [tree, selected]);
+
+  // Escape to go back from file view to parent folder.
+  const goBackRef = useRef(handleGoBack);
+  goBackRef.current = handleGoBack;
+  const selectedRef = useRef(selected);
+  selectedRef.current = selected;
+
+  useEffect(() => {
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const ae = document.activeElement;
+      if (
+        ae &&
+        (ae.tagName === "INPUT" ||
+          ae.tagName === "TEXTAREA" ||
+          (ae as HTMLElement).isContentEditable)
+      ) {
+        return;
+      }
+      if (selectedRef.current?.kind === "file") {
+        e.preventDefault();
+        goBackRef.current();
+      }
+    };
+    window.addEventListener("keydown", onEsc);
+    return () => window.removeEventListener("keydown", onEsc);
+  }, []);
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, node: LibraryNode) => {
@@ -587,6 +635,17 @@ export function LibraryShell() {
               <ChevronsRight size={14} strokeWidth={1.8} />
             </button>
           )}
+          {selected?.kind === "file" && (
+            <button
+              type="button"
+              onClick={handleGoBack}
+              aria-label="Back to folder"
+              title="Back to folder (Esc)"
+              className="-ml-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-neutral-400 transition-colors duration-[120ms] hover:bg-white/[0.06] hover:text-neutral-100"
+            >
+              <ArrowLeft size={14} strokeWidth={1.8} />
+            </button>
+          )}
           <h1 className="shrink-0 truncate text-sm font-medium text-neutral-200">
             {selected?.name ?? tree.name}
           </h1>
@@ -666,6 +725,7 @@ export function LibraryShell() {
               onStackVariantsChange={setStackVariants}
               onSelectVariantGroup={handleSelectVariantGroup}
               activeVariantGroup={activeVariantGroup}
+              scrollPositions={scrollPositions}
             />
           )}
         </div>

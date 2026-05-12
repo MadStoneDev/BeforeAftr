@@ -32,6 +32,7 @@ type Props = {
   onStackVariantsChange?: (v: boolean) => void;
   onSelectVariantGroup?: (group: VariantGroup) => void;
   activeVariantGroup?: VariantGroup | null;
+  scrollPositions?: React.RefObject<Map<string, number>>;
 };
 
 export function Viewer({
@@ -54,6 +55,7 @@ export function Viewer({
   onStackVariantsChange,
   onSelectVariantGroup,
   activeVariantGroup,
+  scrollPositions,
 }: Props) {
   if (!node) {
     return (
@@ -91,6 +93,7 @@ export function Viewer({
         stackVariants={stackVariants}
         onStackVariantsChange={onStackVariantsChange}
         onSelectVariantGroup={onSelectVariantGroup}
+        scrollPositions={scrollPositions}
       />
     );
   }

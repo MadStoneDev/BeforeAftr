@@ -36,6 +36,7 @@ type Props = {
   stackVariants?: boolean;
   onStackVariantsChange?: (v: boolean) => void;
   onSelectVariantGroup?: (group: VariantGroup) => void;
+  scrollPositions?: React.RefObject<Map<string, number>>;
 };
 
 type ToggleOption<T extends string> = { value: T; label: string };
@@ -98,6 +99,7 @@ export function Gallery({
   stackVariants = true,
   onStackVariantsChange,
   onSelectVariantGroup,
+  scrollPositions,
 }: Props) {
   const isRecursive = viewScope === "recursive";
   const isExplorer = viewMode === "explorer";
@@ -255,10 +257,29 @@ export function Gallery({
 
   const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setVisibleCount(BATCH_SIZE);
   }, [node, activeTagsLower, viewMode, viewScope, sortMode, activeTypeFilters, stackVariants]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !scrollPositions?.current) return;
+    const saved = scrollPositions.current.get(node.path);
+    if (saved != null) {
+      requestAnimationFrame(() => {
+        el.scrollTop = saved;
+      });
+    }
+    const posMap = scrollPositions.current;
+    const path = node.path;
+    return () => {
+      if (el && posMap) {
+        posMap.set(path, el.scrollTop);
+      }
+    };
+  }, [node.path, scrollPositions]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -387,7 +408,7 @@ export function Gallery({
         onClear={onClearTags}
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-6">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto p-6">
         {filtered.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-3">
             <p className="text-sm text-neutral-500">
